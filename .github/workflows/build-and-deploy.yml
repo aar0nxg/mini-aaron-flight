@@ -26,13 +26,18 @@ jobs:
         with:
           version: latest
 
+      - name: Show emcc version (sanity check)
+        run: emcc -v
+
       - name: Build (SDL2 → WASM)
         run: |
           mkdir -p dist
-          # if your file is at repo root: change to `emcc main.c ...`
           emcc src/main.c -O2 -s USE_SDL=2 -s ALLOW_MEMORY_GROWTH=1 \
               -o dist/index.html
-          ls -l dist
+          ls -lah dist
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
 
       - name: Upload artifact for GitHub Pages
         uses: actions/upload-pages-artifact@v3
@@ -45,6 +50,9 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
