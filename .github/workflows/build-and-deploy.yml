@@ -10,6 +10,10 @@ permissions:
   pages: write
   id-token: write
 
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -25,10 +29,12 @@ jobs:
       - name: Build (SDL2 → WASM)
         run: |
           mkdir -p dist
-          emcc src/main.c -O2 -s USE_SDL=2 -s ALLOW_MEMORY_GROWTH=1 -o dist/index.html
+          # if your file is at repo root: change to `emcc main.c ...`
+          emcc src/main.c -O2 -s USE_SDL=2 -s ALLOW_MEMORY_GROWTH=1 \
+              -o dist/index.html
           ls -l dist
 
-      - name: Upload Pages artifact
+      - name: Upload artifact for GitHub Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
