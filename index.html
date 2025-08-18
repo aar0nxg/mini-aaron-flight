@@ -5,28 +5,35 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
 <title>Mini Aaron: Flight to Zarifa</title>
 <style>
-  :root{--bg-1:#0f0620;--bg-2:#1b0a38;--accent:#ff5a7a;--accent-2:#b084ff;}
-  html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg-1),var(--bg-2));color:#fff;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;}
-  #gameRoot{position:relative;max-width:960px;margin:0 auto;height:100vh;overflow:hidden;}
+  :root{
+    --bg-1:#0b0820; --bg-2:#160f32; --bg-3:#201443;
+    --accent:#ff5a7a; --accent-2:#b084ff;
+  }
+  html,body{height:100%;margin:0;background:
+      radial-gradient(1600px 100% at 50% 0%,rgba(255,255,255,.05),transparent),
+      linear-gradient(180deg,var(--bg-1),var(--bg-2) 60%,var(--bg-3));
+    color:#fff;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;}
+  #gameRoot{position:relative;max-width:960px;margin:0 auto;height:100vh;overflow:hidden;
+    box-shadow:0 8px 40px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.07);border-radius:16px}
   canvas{display:block;width:100%;height:100%}
 
   .hud{position:absolute;top:12px;left:12px;display:flex;gap:10px;z-index:5}
-  .pill{background:rgba(0,0,0,.35);padding:8px 12px;border-radius:999px}
+  .pill{background:rgba(0,0,0,.35);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.15);padding:8px 12px;border-radius:999px}
   .hud-right{position:absolute;top:12px;right:12px;display:flex;gap:10px;z-index:6}
   .btn{cursor:pointer;user-select:none}
-  .bar{--p:0;position:relative;height:10px;width:200px;border-radius:999px;background:rgba(255,255,255,.15);overflow:hidden}
+  .bar{--p:0;position:relative;height:10px;width:240px;border-radius:999px;background:rgba(255,255,255,.15);overflow:hidden}
   .bar::after{content:"";position:absolute;inset:0;width:calc(var(--p)*1%);background:linear-gradient(90deg,var(--accent),var(--accent-2))}
   .rec{position:absolute;top:14px;right:14px;color:#ff4d4d;font-weight:800;text-shadow:0 0 10px #ff4d4d80}
-  .rec::before{content:"● "; }
+  .rec::before{content:"● ";}
 
-  .overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,0,20,.8);z-index:10;transition:opacity .25s}
+  .overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,0,20,.78);z-index:10;transition:opacity .25s}
   .overlay.hidden{opacity:0;pointer-events:none}
-  .card{background:rgba(255,255,255,.06);padding:28px;border-radius:16px;text-align:center;border:1px solid rgba(255,255,255,.15)}
+  .card{background:rgba(255,255,255,.07);padding:28px;border-radius:16px;text-align:center;border:1px solid rgba(255,255,255,.15);max-width:720px}
   .action{border:none;padding:12px 18px;border-radius:12px;font-weight:800;cursor:pointer;background:linear-gradient(180deg,var(--accent),#ff87a0);color:#fff}
 
   .holdZone{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:7;background:rgba(255,255,255,.08);
             border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(6px);padding:10px 16px;border-radius:999px;user-select:none}
-  .hint{opacity:.8;font-size:12px;margin-top:6px}
+  .hint{opacity:.85;font-size:12px;margin-top:6px}
 </style>
 </head>
 <body>
@@ -50,8 +57,8 @@
   <div class="overlay" id="start">
     <div class="card">
       <h1 style="margin:0 0 8px">The Flight to Zarifa ✈️💜</h1>
-      <p style="margin:0">Hold <b>Space / ↑ / W</b> or <b>hold trackpad</b> to go up. Dodge obstacles.</p>
-      <p class="hint">You have <b>3 lives</b>. Each hit loses one heart. At 0 → <b>Game Over</b> (press Space/Enter to restart).</p>
+      <p style="margin:0">Hold <b>Space / ↑ / W</b> or <b>hold trackpad</b> to go up. Dodge meteors, birds, satellites, clouds, and gusts!</p>
+      <p class="hint">You have <b>3 lives</b>. Hit = lose a heart. At 0 → <b>Game Over</b>. Reach Bangladesh → <b>HUG WIN</b>.</p>
       <button class="action" id="playBtn">🎬 Fly!</button>
     </div>
   </div>
@@ -68,7 +75,24 @@
   <!-- Win -->
   <div class="overlay hidden" id="win">
     <div class="card">
-      <h2 style="margin:0 0 8px">Landed in Bangladesh — Hug time 💖</h2>
+      <h2 style="margin:0 0 10px">Landed in Bangladesh — Hug time 💖</h2>
+      <!-- Pixel-styled hugging SVG (crisp) -->
+      <svg viewBox="0 0 240 160" width="320" height="214" style="image-rendering:pixelated">
+        <rect width="240" height="160" fill="#1a0f2c"/>
+        <g fill="#ff7ea0"><rect x="88" y="34" width="8" height="8"/><rect x="144" y="34" width="8" height="8"/>
+          <rect x="80" y="42" width="72" height="8"/><rect x="72" y="50" width="88" height="8"/>
+          <rect x="72" y="58" width="88" height="8"/><rect x="80" y="66" width="72" height="8"/><rect x="96" y="74" width="40" height="8"/></g>
+        <!-- Aaron -->
+        <g><rect x="84" y="84" width="24" height="18" fill="#ffd7c8"/><rect x="90" y="90" width="12" height="3" fill="#2a2451"/>
+          <rect x="92" y="93" width="2" height="2" fill="#0e0b2b"/><rect x="99" y="93" width="2" height="2" fill="#0e0b2b"/>
+          <rect x="84" y="102" width="24" height="16" fill="#3a2b6d"/><rect x="92" y="112" width="16" height="4" fill="#ffd7c8"/></g>
+        <!-- Zarifa -->
+        <g><rect x="128" y="84" width="24" height="18" fill="#ffcfdd"/><rect x="128" y="80" width="24" height="6" fill="#f19ec4"/>
+          <rect x="133" y="92" width="3" height="3" fill="#5b2b6d"/><rect x="141" y="92" width="3" height="3" fill="#5b2b6d"/>
+          <rect x="128" y="102" width="24" height="16" fill="#8d3c7a"/><rect x="128" y="112" width="16" height="4" fill="#ffcfdd"/></g>
+        <rect x="110" y="112" width="20" height="4" fill="#ffd0d6"/>
+      </svg>
+      <p style="margin:8px 0 14px">Mini Aaron & Zarifa hug and embrace. Love wins. 🫶</p>
       <button class="action" id="againBtn">↻ Play again</button>
     </div>
   </div>
@@ -82,7 +106,7 @@
     gravity:1400, thrust:2400, maxVy:800,
     baseSpeed:300, targetKm:10000,
     livesStart:3,
-    spawnBase:1.05, obsSpeedMin:280, obsSpeedMax:420
+    spawnBase:1.0, obsSpeedMin:280, obsSpeedMax:420
   };
 
   /* ===== State ===== */
@@ -118,20 +142,19 @@
   const muteBtn = document.getElementById('muteBtn');
 
   function updateHUD(){
-    // render hearts like ❤️❤️❤️
     elLives.textContent = '❤️'.repeat(state.lives) + '🤍'.repeat(Math.max(0, cfg.livesStart - state.lives));
     elKm.textContent = Math.max(0, cfg.targetKm - Math.floor(state.dist)).toLocaleString();
     elProg.style.setProperty('--p', (state.dist/cfg.targetKm*100).toFixed(2));
   }
 
-  /* ===== Audio (tiny, built-in) ===== */
+  /* ===== Audio ===== */
   let actx, master, sfxGain, musicGain, oscA, oscB, chordTimer=null;
   function initAudio(){
     if(actx) return;
     actx = new (window.AudioContext||window.webkitAudioContext)();
     master = actx.createGain(); master.connect(actx.destination); master.gain.value = state.muted ? 0 : .8;
     sfxGain = actx.createGain(); sfxGain.connect(master); sfxGain.gain.value = .8;
-    musicGain = actx.createGain(); musicGain.connect(master); musicGain.gain.value = .12;
+    musicGain = actx.createGain(); musicGain.connect(master); musicGain.gain.value = .10;
 
     oscA = actx.createOscillator(); oscB = actx.createOscillator();
     const gA = actx.createGain(), gB = actx.createGain(); gA.gain.value=0; gB.gain.value=0;
@@ -144,8 +167,8 @@
       const [a,b]=chords[i%chords.length]; i++;
       oscA.frequency.setTargetAtTime(a,actx.currentTime,.2);
       oscB.frequency.setTargetAtTime(b,actx.currentTime,.2);
-      gA.gain.setTargetAtTime(.5,actx.currentTime,.4);
-      gB.gain.setTargetAtTime(.45,actx.currentTime,.4);
+      gA.gain.setTargetAtTime(.45,actx.currentTime,.4);
+      gB.gain.setTargetAtTime(.4,actx.currentTime,.4);
       const off=actx.currentTime+4.5;
       gA.gain.setTargetAtTime(0,off,.8);
       gB.gain.setTargetAtTime(0,off,.8);
@@ -166,7 +189,7 @@
     if(master) master.gain.value = state.muted ? 0 : .8;
   }
 
-  /* ===== Input (MacBook-proof) ===== */
+  /* ===== Input (MacBook-friendly) ===== */
   let pressing=false;
   function isFlyKey(e){const c=e.code,k=e.key;return c==="Space"||c==="Spacebar"||c==="ArrowUp"||c==="KeyW"||k===" "||k==="w"||k==="W";}
   function isRestartKey(e){const c=e.code,k=e.key;return c==="Space"||c==="Enter"||k===" "||k==="Enter";}
@@ -180,23 +203,49 @@
     }
   }
   function up(e){ if(isFlyKey(e)){ pressing=false; e.preventDefault(); } }
-
   window.addEventListener('keydown',down,true);
   window.addEventListener('keyup',up,true);
   window.addEventListener('keypress',e=>{ if(isFlyKey(e)||isRestartKey(e)) e.preventDefault(); },true);
-
-  // pointer (trackpad/mouse/touch)
-  const pressStart=()=>{ if(state.mode!=='playing') return; pressing=true; };
-  const pressEnd = ()=>{ pressing=false; };
-  ['pointerdown','mousedown','touchstart'].forEach(t=> root.addEventListener(t, pressStart, {passive:false}));
-  ['pointerup','pointercancel','pointerleave','mouseup','touchend'].forEach(t=> root.addEventListener(t, pressEnd, {passive:false}));
+  ['pointerdown','mousedown','touchstart'].forEach(t=> root.addEventListener(t, ()=>{ if(state.mode==='playing') pressing=true; }, {passive:false}));
+  ['pointerup','pointercancel','pointerleave','mouseup','touchend'].forEach(t=> root.addEventListener(t, ()=>{ pressing=false; }, {passive:false}));
   root.addEventListener('click', ()=>{ if(state.mode!=='playing') startGame(); });
   window.addEventListener('blur',()=>pressing=false);
   document.addEventListener('visibilitychange',()=>{ if(document.hidden) pressing=false; });
 
+  /* ===== Parallax Stars ===== */
+  const stars = {
+    far:   makeStars(40, 0.15),
+    mid:   makeStars(28, 0.35),
+    near:  makeStars(20, 0.65)
+  };
+  let scroll = 0;
+  function makeStars(n, twinkle){
+    const arr=[]; for(let i=0;i<n;i++){
+      arr.push({x:Math.random()*cfg.width, y:Math.random()*cfg.height, s:Math.random()*2+1, a:0.6+Math.random()*0.4, tw:twinkle*(0.5+Math.random())});
+    } return arr;
+  }
+  function drawStars(layer, speedMul, color){
+    ctx.save(); ctx.fillStyle=color;
+    for(const st of layer){
+      const x = (st.x - (scroll*speedMul)% (cfg.width+50));
+      const xx = x< -10 ? x + cfg.width + 50 : x;
+      const tw = 0.85 + Math.sin(state.t*2 + st.x*0.01)*0.15*st.tw;
+      ctx.globalAlpha = st.a * tw;
+      ctx.fillRect(xx, st.y, st.s, st.s);
+    }
+    ctx.restore(); ctx.globalAlpha=1;
+  }
+
+  /* ===== SPRITE: chibi Aaron standing on the ship ===== */
+  const doggoImg = new Image();
+  doggoImg.src = "doggo.png"; // <-- keep this filename the same as the PNG you uploaded
+  let doggoReady = false;
+  doggoImg.onload = () => doggoReady = true;
+  doggoImg.onerror = () => { console.warn("doggo.png not found — using fallback."); doggoReady = false; };
+
   /* ===== Entities ===== */
   class Plane{
-    constructor(){ this.x=160; this.y=cfg.height*0.6; this.vy=0; this.w=68; this.h=28; this.blink=0; }
+    constructor(){ this.x=160; this.y=cfg.height*0.6; this.vy=0; this.w=74; this.h=30; this.blink=0; }
     update(dt){
       const accel = cfg.gravity - (pressing ? cfg.thrust : 0);
       this.vy += accel * dt;
@@ -210,9 +259,31 @@
     draw(ctx){
       ctx.save(); ctx.translate(this.x,this.y);
       ctx.globalAlpha = (this.blink>0 && Math.floor(this.blink*20)%2===0) ? 0.35 : 1;
+
+      // ship body (unchanged collision box)
       ctx.fillStyle='#e5e2ff'; ctx.fillRect(-this.w/2,-this.h/2,this.w,this.h);
-      ctx.fillStyle='#b084ff'; ctx.fillRect(-8,-this.h/2-10,44,12);
-      ctx.fillStyle='#ff7da0'; ctx.fillRect(this.w/2-8,-this.h/2,8,this.h);
+      ctx.fillStyle='#b084ff'; ctx.fillRect(-14,-this.h/2-10,52,12); // wing
+      ctx.fillStyle='#ff7da0'; ctx.fillRect(this.w/2-8,-this.h/2,8,this.h); // nose
+      ctx.globalAlpha=.5; ctx.fillStyle='#ff7da0'; ctx.fillRect(-this.w/2-6,-2,4,4); ctx.globalAlpha=1;
+
+      // === draw chibi Aaron sprite standing on top ===
+      const spriteW = 36;           // adjust if you want bigger/smaller
+      const spriteH = 36;
+      const spriteX = -spriteW/2;   // centered horizontally on ship
+      const spriteY = -this.h/2 - spriteH + 6; // standing on top with tiny overlap
+      if(doggoReady){
+        // crisp pixels
+        const old = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(doggoImg, spriteX, spriteY, spriteW, spriteH);
+        ctx.imageSmoothingEnabled = old;
+      }else{
+        // fallback mini-chibi made of rectangles (if image missing)
+        ctx.fillStyle='#ffd7c8'; ctx.fillRect(spriteX+10, spriteY+12, 16, 12); // face
+        ctx.fillStyle='#0e0b2b'; ctx.fillRect(spriteX+12, spriteY+16, 2, 2); ctx.fillRect(spriteX+20, spriteY+16, 2, 2);
+        ctx.fillStyle='#3a2b6d'; ctx.fillRect(spriteX+8,  spriteY+24, 20, 10); // body
+        ctx.fillStyle='#2a2451'; ctx.fillRect(spriteX+6,  spriteY+12, 20, 2);  // hair fringe
+      }
+
       ctx.restore();
     }
     takeHit(){
@@ -227,11 +298,17 @@
   }
 
   class Obstacle{
-    constructor(kind,x,y,speed){ this.kind=kind; this.x=x; this.y=y; this.speed=speed; this.alive=true; this.t=0;
-      this.w= kind==='bird'?42 : kind==='cloud'?70 : 36;
-      this.h= kind==='bird'?26 : kind==='cloud'?40 : 36; }
+    constructor(kind,x,y,speed){
+      this.kind=kind; this.x=x; this.y=y; this.speed=speed; this.alive=true; this.t=0;
+      this.w= kind==='bird'?42 : kind==='cloud'?78 : kind==='gust'?36 : kind==='meteor'?32 : 40;
+      this.h= kind==='bird'?26 : kind==='cloud'?44 : kind==='gust'?36 : kind==='meteor'?28 : 26;
+    }
     rect(){ return {x:this.x-this.w/2,y:this.y-this.h/2,w:this.w,h:this.h}; }
-    update(dt){ this.t+=dt; this.x -= this.speed*dt; if(this.x<-100) this.alive=false; }
+    update(dt){
+      this.t+=dt; this.x -= this.speed*dt; if(this.x<-120) this.alive=false;
+      if(this.kind==='meteor'){ this.y += Math.sin(this.t*8)*0.6; }
+      if(this.kind==='satellite'){ this.y += Math.sin(this.t*5)*0.4; }
+    }
     draw(ctx){
       ctx.save(); ctx.translate(this.x,this.y);
       if(this.kind==='bird'){
@@ -241,10 +318,18 @@
         ctx.fillStyle='#ffc23e'; ctx.beginPath(); ctx.moveTo(18,-2); ctx.lineTo(28,0); ctx.lineTo(18,2); ctx.fill();
       } else if(this.kind==='cloud'){
         ctx.fillStyle='rgba(255,255,255,.85)'; cloud(ctx,0,0,this.w,this.h); ctx.fill();
-      } else { // gust
+      } else if(this.kind==='gust'){
         ctx.strokeStyle='#b3a6ff'; ctx.lineWidth=2.5; ctx.beginPath();
         for(let i=-18;i<=18;i++){ const yy=Math.sin((i/6)+this.t*6)*6; if(i===-18) ctx.moveTo(i,yy); else ctx.lineTo(i,yy); }
         ctx.stroke();
+      } else if(this.kind==='meteor'){
+        ctx.fillStyle='#ffa07a'; rrect(ctx,-14,-10,28,20,6); ctx.fill();
+        ctx.globalAlpha=.6; ctx.fillStyle='#ff6b6b'; ctx.beginPath(); ctx.ellipse(-20,0,14,6,0,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
+        ctx.fillStyle='#5a2a2a'; ctx.fillRect(-6,-4,4,4); ctx.fillRect(2,2,3,3);
+      } else if(this.kind==='satellite'){
+        ctx.fillStyle='#d0d7ff'; rrect(ctx,-8,-6,16,12,2); ctx.fill();
+        ctx.fillStyle='#7aa0ff'; ctx.fillRect(-26,-4,16,8); ctx.fillRect(10,-4,16,8);
+        ctx.fillStyle='#2a2451'; ctx.fillRect(-1,-10,2,20);
       }
       ctx.restore();
     }
@@ -259,10 +344,10 @@
 
   function spawnObstacle(){
     const r = Math.random();
-    const kind = r<.55?'bird' : r<.85?'cloud' : 'gust';
+    const kind = r<.35?'bird' : r<.6?'cloud' : r<.75?'gust' : r<.9?'meteor' : 'satellite';
     const y = 60 + Math.random()*(cfg.height-120);
     const speed = cfg.obsSpeedMin + Math.random()*(cfg.obsSpeedMax-cfg.obsSpeedMin);
-    obstacles.push(new Obstacle(kind, cfg.width+100, y, speed));
+    obstacles.push(new Obstacle(kind, cfg.width+120, y, speed));
   }
 
   /* ===== Loop ===== */
@@ -273,7 +358,7 @@
     if(state.mode!=='playing'){ requestAnimationFrame(loop); return; }
     if(state.paused){ requestAnimationFrame(loop); return; }
 
-    state.t+=dt; state.lastSpawn+=dt;
+    state.t+=dt; state.lastSpawn+=dt; scroll += (cfg.baseSpeed*dt);
 
     // progress & spawns
     state.dist = Math.min(cfg.targetKm, state.dist + (cfg.baseSpeed/3.5)*dt);
@@ -291,20 +376,28 @@
       if(overlap(pr, ob.rect())){
         ob.alive=false;
         plane.takeHit();
-        break; // one hit per frame
+        break;
       }
     }
-
     // cull
     for(let i=obstacles.length-1;i>=0;i--) if(!obstacles[i].alive) obstacles.splice(i,1);
 
-    // draw
-    ctx.fillStyle='#120a1d'; ctx.fillRect(0,0,cfg.width,cfg.height);
+    /* ===== DRAW ===== */
+    ctx.clearRect(0,0,cfg.width,cfg.height);
+    drawStars(stars.far, 0.2, '#d9d4ff');
+    drawStars(stars.mid, 0.45, '#fff0ff');
+    drawStars(stars.near, 0.8, '#ffffff');
+
+    const g = ctx.createLinearGradient(0,0,0,cfg.height);
+    g.addColorStop(0,'rgba(255,255,255,0.02)');
+    g.addColorStop(1,'rgba(255,120,160,0.04)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,cfg.width,cfg.height);
+
     plane.draw(ctx);
     for(const ob of obstacles) ob.draw(ctx);
+
     updateHUD();
 
-    // win
     if(state.dist>=cfg.targetKm){ return win(); }
 
     requestAnimationFrame(loop);
