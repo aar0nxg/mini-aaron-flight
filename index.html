@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Mini Aaron: Flight to Zarifa — Choose Your Journey</title>
+<title>Mini Flight — Choose Your Journey</title>
 <style>
   :root{ --bg-1:#0b0820; --bg-2:#160f32; --bg-3:#201443; --accent:#ff5a7a; --accent-2:#b084ff; }
   html,body{height:100%;margin:0;background:
@@ -39,9 +39,9 @@
             border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(6px);padding:10px 16px;border-radius:999px;user-select:none}
   .hint{opacity:.85;font-size:12px;margin-top:6px}
 
-  /* Mobile “no highlight / no scroll” fix (allow UI taps) */
+  /* Mobile: prevent highlight/scroll but allow UI taps */
   html, body, #gameRoot, canvas {
-    touch-action: none; -ms-touch-action: none; overscroll-behavior: none;
+    touch-action: none; overscroll-behavior: none;
     user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   }
   * { -webkit-tap-highlight-color: transparent; }
@@ -232,8 +232,10 @@
     function tick(){const [a,b]=chords[i%chords.length]; i++;
       oscA.frequency.setTargetAtTime(a,actx.currentTime,.2);
       oscB.frequency.setTargetAtTime(b,actx.currentTime,.2);
-      gA.gain.setTargetAtTime(.45,actx.currentTime,.4); gB.gain.setTargetAtTime(.4,actx.currentTime,.4);
-      const off=actx.currentTime+4.5; gA.gain.setTargetAtTime(0,off,.8); gB.gain.setTargetAtTime(0,off,.8);}
+      const off=actx.currentTime+4.5;
+      gA.gain.setTargetAtTime(.45,actx.currentTime,.4); gA.gain.setTargetAtTime(0,off,.8);
+      gB.gain.setTargetAtTime(.40,actx.currentTime,.4); gB.gain.setTargetAtTime(0,off,.8);
+    }
     tick(); chordTimer=setInterval(tick,6000);
   }
   function sfx(freq=900,dur=.08,type='square',gain=.25){ if(!actx) return;
@@ -260,7 +262,7 @@
   window.addEventListener('keyup',up,true);
   window.addEventListener('keypress',e=>{ if(isFlyKey(e)||isRestartKey(e)) e.preventDefault(); },true);
 
-  // Touch: block page gestures but allow UI
+  // Touch: block page gestures but allow UI elements
   ['touchstart','touchmove','touchend','touchcancel'].forEach(type => {
     root.addEventListener(type, (e) => {
       const target = e.target;
@@ -277,11 +279,16 @@
   root.addEventListener('wheel', (e) => { e.preventDefault(); }, { passive: false });
 
   // Buttons
+  const rootClickStart = () => { if(state.mode==='start') startGame(); };
+  root.addEventListener('click', rootClickStart);
+  const playBtn = document.getElementById('playBtn');
   playBtn.onclick=startGame;
   retryBtn.onclick=()=>{ state.mode='start'; elGameOver.classList.add('hidden'); elStart.classList.remove('hidden'); };
   againBtn.onclick=()=>{ state.mode='start'; elWin.classList.add('hidden'); elStart.classList.remove('hidden'); };
+  pauseBtn.onclick=togglePause;
+  muteBtn.onclick=toggleMute;
 
-  // ---- Choose journey: direct listeners (fix) ----
+  // ---- Choose journey: direct listeners (works on mobile & desktop) ----
   function chooseJourney(key){
     selected = key;
     loadSpritesFor(key);
@@ -309,15 +316,11 @@
   function drawStars(layer,mul,color){ctx.save(); ctx.fillStyle=color; for(const st of layer){const x=(st.x-(scroll*mul)%(cfg.width+50)); const xx=x<-10?x+cfg.width+50:x; const tw=0.85+Math.sin(state.t*2+st.x*0.01)*0.15*st.tw; ctx.globalAlpha=st.a*tw; ctx.fillRect(xx,st.y,st.s,st.s);} ctx.restore(); ctx.globalAlpha=1;}
 
   /* ===== Sprites ===== */
-  let playerImg=new Image(); let playerReady=false;
-  let goalImg=new Image();   let goalReady=false;
   function loadSpritesFor(key){
     const conf = roster[key];
     playerImg = new Image(); playerReady=false; playerImg.onload=()=>playerReady=true; playerImg.src=conf.playerSprite;
     goalImg   = new Image(); goalReady=false;   goalImg.onload=()=>goalReady=true;   goalImg.src=conf.gfSprite;
-    // set win image
-    hugImg.style.display='block'; hugFallback.style.display='none';
-    hugImg.src = conf.winImage;
+    hugImg.style.display='block'; hugFallback.style.display='none'; hugImg.src = conf.winImage;
   }
 
   /* ===== Entities ===== */
@@ -365,7 +368,7 @@
       this.w= kind==='bird'?42 : kind==='cloud'?78 : kind==='gust'?36 : kind==='meteor'?32 : 40;
       this.h= kind==='bird'?26 : kind==='cloud'?44 : kind==='gust'?36 : kind==='meteor'?28 : 26;
     }
-    rect(){ return {x:this.x-this.w/2,y<this.y-this.h/2?this.y-this.h/2:this.y-this.h/2,w:this.w,h:this.h}; } /* keeps same size */
+    rect(){ return {x:this.x-this.w/2,y:this.y-this.h/2,w:this.w,h:this.h}; }
     update(dt){
       this.t+=dt; this.x-=this.speed*dt; if(this.x<-120) this.alive=false;
       if(this.kind==='meteor') this.y+=Math.sin(this.t*8)*0.6;
@@ -397,7 +400,6 @@
     }
   }
 
-  // Zarifa/Wafia/Sehely/Zarin goal object
   class Goal{
     constructor(){ this.x=cfg.width+140; this.y=cfg.height*0.55; this.w=40; this.h=48; this.speed=320; this.active=true; }
     rect(){ return {x:this.x-this.w/2,y:this.y-this.h/2,w:this.w,h:this.h}; }
@@ -474,9 +476,7 @@
 
   /* ===== States ===== */
   function startGame(){
-    if(!selected){ // guard if someone bypasses choose
-      elChoose.classList.remove('hidden'); state.mode='choose'; return;
-    }
+    if(!selected){ elChoose.classList.remove('hidden'); state.mode='choose'; return; }
     state.mode='playing'; state.paused=false; state.t=0; state.dist=0; state.lastSpawn=0; state.lives=cfg.livesStart;
     obstacles.length=0; goal=null; pressing=false; updateHUD();
     elStart.classList.add('hidden'); elGameOver.classList.add('hidden'); elWin.classList.add('hidden');
@@ -487,10 +487,43 @@
   function win(){ state.mode='win'; elWin.classList.remove('hidden'); sfx(1200,.12,'triangle',.35); sfx(1500,.18,'square',.25); }
   function togglePause(){ if(state.mode!=='playing') return; state.paused=!state.paused; pauseBtn.textContent=state.paused?'▶️':'⏸️'; }
 
-  pauseBtn.onclick=togglePause; muteBtn.onclick=()=>{ state.muted=!state.muted; muteBtn.textContent=state.muted?'🔇':'🔊'; if(master) master.gain.value=state.muted?0:.8; };
+  // Buttons
+  const playBtn = document.getElementById('playBtn');
+  playBtn.onclick=startGame;
+  retryBtn.onclick=()=>{ state.mode='start'; elGameOver.classList.add('hidden'); elStart.classList.remove('hidden'); };
+  againBtn.onclick=()=>{ state.mode='start'; elWin.classList.add('hidden'); elStart.classList.remove('hidden'); };
+  pauseBtn.onclick=togglePause;
+  muteBtn.onclick=toggleMute;
 
-  // Only start on root click from the Start overlay state
+  // Root click only starts when on Start overlay
   root.addEventListener('click', ()=>{ if(state.mode==='start') startGame(); });
+
+  // Choose journey (direct listeners)
+  function chooseJourney(key){
+    selected = key;
+    loadSpritesFor(key);
+    const conf = roster[key];
+    startTitle.textContent = `The Flight to ${conf.gfName} ✈️💜`;
+    winTitle.textContent   = `Landed — ${conf.playerName} & ${conf.gfName}`;
+    winCaption.textContent = `${conf.playerName} and ${conf.gfName} hug and embrace. 🫶`;
+    elChoose.classList.add('hidden');
+    elStart.classList.remove('hidden');
+    state.mode='start';
+  }
+  document.querySelectorAll('#choose .choice').forEach(card => {
+    card.setAttribute('tabindex','0');
+    card.setAttribute('role','button');
+    card.addEventListener('click', () => chooseJourney(card.dataset.key));
+    card.addEventListener('touchstart', () => chooseJourney(card.dataset.key), {passive:true});
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseJourney(card.dataset.key); }
+    });
+  });
+
+  /* ===== Stars helpers ===== */
+  const stars={far:makeStars(40,.15), mid:makeStars(28,.35), near:makeStars(20,.65)}; let scroll=0;
+  function makeStars(n,tw){const a=[]; for(let i=0;i<n;i++) a.push({x:Math.random()*cfg.width,y:Math.random()*cfg.height,s:Math.random()*2+1,a:0.6+Math.random()*0.4,tw:tw*(0.5+Math.random())}); return a;}
+  function drawStars(layer,mul,color){ctx.save(); ctx.fillStyle=color; for(const st of layer){const x=(st.x-(scroll*mul)%(cfg.width+50)); const xx=x<-10?x+cfg.width+50:x; const tw=0.85+Math.sin(state.t*2+st.x*0.01)*0.15*st.tw; ctx.globalAlpha=st.a*tw; ctx.fillRect(xx,st.y,st.s,st.s);} ctx.restore(); ctx.globalAlpha=1;}
 
   updateHUD();
   requestAnimationFrame(loop);
