@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"
+/>
 <title>Mini Aaron: Flight to Zarifa</title>
 <style>
   :root{ --bg-1:#0b0820; --bg-2:#160f32; --bg-3:#201443; --accent:#ff5a7a; --accent-2:#b084ff; }
@@ -10,9 +13,10 @@
     radial-gradient(1600px 100% at 50% 0%,rgba(255,255,255,.05),transparent),
     linear-gradient(180deg,var(--bg-1),var(--bg-2) 60%,var(--bg-3));
     color:#fff;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;}
+
   #gameRoot{position:relative;max-width:960px;margin:0 auto;height:100vh;overflow:hidden;
     box-shadow:0 8px 40px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.07);border-radius:16px}
-  canvas{display:block;width:100%;height:100%}
+  canvas{display:block;width:100%;height:100%;outline:none}
 
   .hud{position:absolute;top:12px;left:12px;display:flex;gap:10px;z-index:5}
   .pill{background:rgba(0,0,0,.35);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.15);padding:8px 12px;border-radius:999px}
@@ -31,6 +35,17 @@
   .holdZone{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:7;background:rgba(255,255,255,.08);
             border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(6px);padding:10px 16px;border-radius:999px;user-select:none}
   .hint{opacity:.85;font-size:12px;margin-top:6px}
+
+  /* ===== Mobile “no highlight / no scroll” fix ===== */
+  html, body, #gameRoot, canvas {
+    touch-action: none;              /* stop default panning/zoom gestures */
+    -ms-touch-action: none;
+    overscroll-behavior: none;       /* no bounce/overscroll */
+    user-select: none;               /* no text selection */
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;     /* no touch callout */
+  }
+  * { -webkit-tap-highlight-color: transparent; } /* no blue tap flash on iOS */
 </style>
 </head>
 <body>
@@ -69,7 +84,7 @@
     </div>
   </div>
 
-  <!-- Win (uses hug.png with SVG fallback) -->
+  <!-- Win (hug.png with SVG fallback) -->
   <div class="overlay hidden" id="win">
     <div class="card">
       <h2 style="margin:0 0 10px">Landed in Bangladesh — Hug time 💖</h2>
@@ -182,13 +197,35 @@
   let pressing=false;
   function isFlyKey(e){const c=e.code,k=e.key;return c==="Space"||c==="Spacebar"||c==="ArrowUp"||c==="KeyW"||k===" "||k==="w"||k==="W";}
   function isRestartKey(e){const c=e.code,k=e.key;return c==="Space"||c==="Enter"||k===" "||k==="Enter";}
-  function down(e){ if(state.mode==='playing'){ if(isFlyKey(e)){pressing=true; e.preventDefault();} if(e.code==="KeyP")togglePause(); if(e.code==="KeyM")toggleMute(); }
-                   else{ if(isRestartKey(e)){ e.preventDefault(); startGame(); } } }
+  function down(e){
+    if(state.mode==='playing'){
+      if(isFlyKey(e)){ pressing=true; e.preventDefault(); }
+      if(e.code==="KeyP"){ togglePause(); }
+      if(e.code==="KeyM"){ toggleMute(); }
+    }else{
+      if(isRestartKey(e)){ e.preventDefault(); startGame(); }
+    }
+  }
   function up(e){ if(isFlyKey(e)){ pressing=false; e.preventDefault(); } }
-  window.addEventListener('keydown',down,true); window.addEventListener('keyup',up,true);
+  window.addEventListener('keydown',down,true);
+  window.addEventListener('keyup',up,true);
   window.addEventListener('keypress',e=>{ if(isFlyKey(e)||isRestartKey(e)) e.preventDefault(); },true);
-  ['pointerdown','mousedown','touchstart'].forEach(t=> root.addEventListener(t, ()=>{ if(state.mode==='playing') pressing=true; }, {passive:false}));
-  ['pointerup','pointercancel','pointerleave','mouseup','touchend'].forEach(t=> root.addEventListener(t, ()=>{ pressing=false; }, {passive:false}));
+
+  // ===== Mobile touch: prevent highlight/scroll while holding =====
+  ['touchstart','touchmove','touchend','touchcancel'].forEach(type => {
+    root.addEventListener(type, (e) => {
+      // Let the game handle it, not the browser
+      e.preventDefault();
+      // For flying: only set pressing on start; release on end
+      if (state.mode==='playing') {
+        if (type==='touchstart') pressing = true;
+        if (type==='touchend' || type==='touchcancel') pressing = false;
+      }
+    }, { passive: false });
+  });
+  // Also guard against trackpad/wheel scroll on some devices
+  root.addEventListener('wheel', (e) => { e.preventDefault(); }, { passive: false });
+
   root.addEventListener('click', ()=>{ if(state.mode!=='playing') startGame(); });
   window.addEventListener('blur',()=>pressing=false);
   document.addEventListener('visibilitychange',()=>{ if(document.hidden) pressing=false; });
@@ -231,7 +268,7 @@
         ctx.drawImage(doggoImg,x,y,w,h);
         ctx.imageSmoothingEnabled=smooth;
       }else{
-        // simple fallback if doggo.png missing
+        // fallback if doggo.png missing
         ctx.fillStyle='#ffd7c8'; ctx.fillRect(x+10,y+12,16,12);
         ctx.fillStyle='#0e0b2b'; ctx.fillRect(x+12,y+16,2,2); ctx.fillRect(x+20,y+16,2,2);
         ctx.fillStyle='#3a2b6d'; ctx.fillRect(x+8,y+24,20,10);
@@ -354,7 +391,7 @@
     for(const ob of obstacles) ob.draw(ctx);
     updateHUD();
 
-    // safety win if distance reaches exact target (in case you miss the sprite)
+    // safety win if distance reaches exact target
     if(state.dist>=cfg.targetKm) return win();
 
     requestAnimationFrame(loop);
