@@ -10,11 +10,9 @@
     radial-gradient(1600px 100% at 50% 0%,rgba(255,255,255,.05),transparent),
     linear-gradient(180deg,var(--bg-1),var(--bg-2) 60%,var(--bg-3));
     color:#fff;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;}
-
   #gameRoot{position:relative;max-width:960px;margin:0 auto;height:100vh;overflow:hidden;
     box-shadow:0 8px 40px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.07);border-radius:16px}
   canvas{display:block;width:100%;height:100%;outline:none}
-
   .hud{position:absolute;top:12px;left:12px;display:flex;gap:10px;z-index:5}
   .pill{background:rgba(0,0,0,.35);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.15);padding:8px 12px;border-radius:999px}
   .hud-right{position:absolute;top:12px;right:12px;display:flex;gap:10px;z-index:6}
@@ -23,22 +21,18 @@
   .bar::after{content:"";position:absolute;inset:0;width:calc(var(--p)*1%);background:linear-gradient(90deg,var(--accent),var(--accent-2))}
   .rec{position:absolute;top:14px;right:14px;color:#ff4d4d;font-weight:800;text-shadow:0 0 10px #ff4d4d80}
   .rec::before{content:"● ";}
-
   .overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,0,20,.78);z-index:10;transition:opacity .25s}
   .overlay.hidden{opacity:0;pointer-events:none}
   .card{background:rgba(255,255,255,.07);padding:28px;border-radius:16px;text-align:center;border:1px solid rgba(255,255,255,.15);max-width:760px}
   .action{border:none;padding:12px 18px;border-radius:12px;font-weight:800;cursor:pointer;background:linear-gradient(180deg,var(--accent),#ff87a0);color:#fff}
-
   .grid{display:grid;grid-template-columns:repeat(2,minmax(180px,1fr));gap:14px;margin-top:14px}
   .choice{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.15);cursor:pointer}
   .choice img{width:36px;height:36px;image-rendering:pixelated}
   .choice b{font-size:16px}
   .sub{opacity:.8;font-size:12px}
-
   .holdZone{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:7;background:rgba(255,255,255,.08);
             border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(6px);padding:10px 16px;border-radius:999px;user-select:none}
   .hint{opacity:.85;font-size:12px;margin-top:6px}
-
   /* Mobile: prevent highlight/scroll but allow UI taps */
   html, body, #gameRoot, canvas {
     touch-action: none; overscroll-behavior: none;
@@ -183,37 +177,25 @@
   const hugImg = document.getElementById('hugImg');
   const hugFallback = document.getElementById('hugFallback');
 
-  /* ===== Current images (set on selection) ===== */
+  /* ===== Sprites (set on selection) ===== */
   let playerImg=null, playerReady=false;
   let goalImg=null,   goalReady=false;
-
   function loadSpritesFor(key){
     const conf = roster[key];
-    // Player sprite
-    playerImg = new Image(); playerReady=false;
-    playerImg.onload=()=>playerReady=true;
-    playerImg.onerror=()=>playerReady=false;
-    playerImg.src = conf.playerSprite;
-
-    // Goal sprite
-    goalImg = new Image(); goalReady=false;
-    goalImg.onload=()=>goalReady=true;
-    goalImg.onerror=()=>goalReady=false;
-    goalImg.src = conf.gfSprite;
-
+    playerImg = new Image(); playerReady=false; playerImg.onload=()=>playerReady=true; playerImg.onerror=()=>playerReady=false; playerImg.src = conf.playerSprite;
+    goalImg   = new Image(); goalReady=false;   goalImg.onload=()=>goalReady=true;   goalImg.onerror=()=>goalReady=false;   goalImg.src = conf.gfSprite;
     // Win image
-    hugImg.style.display='block'; hugFallback.style.display='none';
-    hugImg.src = conf.winImage;
+    hugImg.style.display='block'; hugFallback.style.display='none'; hugImg.src = conf.winImage;
   }
+  hugImg.addEventListener('error', ()=>{ hugImg.style.display='none'; hugFallback.style.display='block'; });
 
   function updateHUD(){
     elLives.textContent = '❤️'.repeat(state.lives) + '🤍'.repeat(Math.max(0, cfg.livesStart - state.lives));
     elKm.textContent = Math.max(0, cfg.targetKm - Math.floor(state.dist)).toLocaleString();
     elProg.style.setProperty('--p', (state.dist/cfg.targetKm*100).toFixed(2));
   }
-  hugImg.addEventListener('error', ()=>{ hugImg.style.display='none'; hugFallback.style.display='block'; });
 
-  /* ===== Audio ===== */
+  /* ===== Audio (unchanged) ===== */
   let actx, master, sfxGain, musicGain, oscA, oscB, chordTimer=null;
   function initAudio(){
     if(actx) return;
@@ -221,13 +203,10 @@
     master = actx.createGain(); master.connect(actx.destination); master.gain.value = state.muted ? 0 : .8;
     sfxGain = actx.createGain(); sfxGain.connect(master); sfxGain.gain.value = .8;
     musicGain = actx.createGain(); musicGain.connect(master); musicGain.gain.value = .10;
-
     oscA = actx.createOscillator(); oscB = actx.createOscillator();
     const gA = actx.createGain(), gB = actx.createGain(); gA.gain.value=0; gB.gain.value=0;
-    oscA.type='sine'; oscB.type='triangle';
-    oscA.connect(gA).connect(musicGain); oscB.connect(gB).connect(musicGain);
+    oscA.type='sine'; oscB.type='triangle'; oscA.connect(gA).connect(musicGain); oscB.connect(gB).connect(musicGain);
     oscA.start(); oscB.start();
-
     const chords=[[220,275],[176,330],[293,247],[220,275]]; let i=0;
     function tick(){const [a,b]=chords[i%chords.length]; i++;
       oscA.frequency.setTargetAtTime(a,actx.currentTime,.2);
@@ -241,7 +220,8 @@
   function sfx(freq=900,dur=.08,type='square',gain=.25){ if(!actx) return;
     const o=actx.createOscillator(), g=actx.createGain();
     o.type=type; o.frequency.value=freq; g.gain.value=gain; o.connect(g).connect(sfxGain); o.start();
-    g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime+dur); o.stop(actx.currentTime+dur); }
+    g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime+dur); o.stop(actx.currentTime+dur);
+  }
   function toggleMute(){ state.muted=!state.muted; muteBtn.textContent=state.muted?'🔇':'🔊'; if(master) master.gain.value=state.muted?0:.8; }
 
   /* ===== Input ===== */
@@ -262,7 +242,7 @@
   window.addEventListener('keyup',up,true);
   window.addEventListener('keypress',e=>{ if(isFlyKey(e)||isRestartKey(e)) e.preventDefault(); },true);
 
-  // Touch: block page gestures but allow UI elements
+  // Touch: block page gestures but allow UI
   ['touchstart','touchmove','touchend','touchcancel'].forEach(type => {
     root.addEventListener(type, (e) => {
       const target = e.target;
@@ -279,16 +259,13 @@
   root.addEventListener('wheel', (e) => { e.preventDefault(); }, { passive: false });
 
   // Buttons
-  const rootClickStart = () => { if(state.mode==='start') startGame(); };
-  root.addEventListener('click', rootClickStart);
-  const playBtn = document.getElementById('playBtn');
   playBtn.onclick=startGame;
   retryBtn.onclick=()=>{ state.mode='start'; elGameOver.classList.add('hidden'); elStart.classList.remove('hidden'); };
   againBtn.onclick=()=>{ state.mode='start'; elWin.classList.add('hidden'); elStart.classList.remove('hidden'); };
   pauseBtn.onclick=togglePause;
   muteBtn.onclick=toggleMute;
 
-  // ---- Choose journey: direct listeners (works on mobile & desktop) ----
+  // Choose journey (direct listeners)
   function chooseJourney(key){
     selected = key;
     loadSpritesFor(key);
@@ -310,18 +287,10 @@
     });
   });
 
-  /* ===== Parallax Stars ===== */
+  /* ===== Parallax Stars (single definition) ===== */
   const stars={far:makeStars(40,.15), mid:makeStars(28,.35), near:makeStars(20,.65)}; let scroll=0;
   function makeStars(n,tw){const a=[]; for(let i=0;i<n;i++) a.push({x:Math.random()*cfg.width,y:Math.random()*cfg.height,s:Math.random()*2+1,a:0.6+Math.random()*0.4,tw:tw*(0.5+Math.random())}); return a;}
   function drawStars(layer,mul,color){ctx.save(); ctx.fillStyle=color; for(const st of layer){const x=(st.x-(scroll*mul)%(cfg.width+50)); const xx=x<-10?x+cfg.width+50:x; const tw=0.85+Math.sin(state.t*2+st.x*0.01)*0.15*st.tw; ctx.globalAlpha=st.a*tw; ctx.fillRect(xx,st.y,st.s,st.s);} ctx.restore(); ctx.globalAlpha=1;}
-
-  /* ===== Sprites ===== */
-  function loadSpritesFor(key){
-    const conf = roster[key];
-    playerImg = new Image(); playerReady=false; playerImg.onload=()=>playerReady=true; playerImg.src=conf.playerSprite;
-    goalImg   = new Image(); goalReady=false;   goalImg.onload=()=>goalReady=true;   goalImg.src=conf.gfSprite;
-    hugImg.style.display='block'; hugFallback.style.display='none'; hugImg.src = conf.winImage;
-  }
 
   /* ===== Entities ===== */
   class Plane{
@@ -351,7 +320,6 @@
         const sm=ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled=false;
         ctx.drawImage(playerImg,x,y,w,h); ctx.imageSmoothingEnabled=sm;
       } else {
-        // tiny fallback figure
         ctx.fillStyle='#ffd7c8'; ctx.fillRect(x+10,y+12,16,12);
         ctx.fillStyle='#0e0b2b'; ctx.fillRect(x+12,y+16,2,2); ctx.fillRect(x+20,y+16,2,2);
         ctx.fillStyle='#3a2b6d'; ctx.fillRect(x+8,y+24,20,10);
@@ -402,7 +370,7 @@
 
   class Goal{
     constructor(){ this.x=cfg.width+140; this.y=cfg.height*0.55; this.w=40; this.h=48; this.speed=320; this.active=true; }
-    rect(){ return {x:this.x-this.w/2,y:this.y-this.h/2,w:this.w,h:this.h}; }
+    rect(){ return {x:this.x-this.w/2,y:this.y-this.h/2,w:this.w,h	this.h}; }
     update(dt){ this.x -= this.speed*dt; if(this.x<-120) this.active=false; }
     draw(ctx){
       if(!goalReady) return;
@@ -429,7 +397,7 @@
   }
 
   /* ===== Loop ===== */
-  let last=performance.now(), scroll=0;
+  let last=performance.now(); let scroll=0;
   function loop(now){
     const dt=Math.min(0.033,(now-last)/1000); last=now;
     if(state.mode!=='playing' || state.paused){ requestAnimationFrame(loop); return; }
@@ -461,7 +429,7 @@
     for(let i=obstacles.length-1;i>=0;i--) if(!obstacles[i].alive) obstacles.splice(i,1);
     if(goal && !goal.active) goal=null;
 
-    /* ==== DRAW ==== */
+    // DRAW
     ctx.clearRect(0,0,cfg.width,cfg.height);
     drawStars(stars.far,0.2,'#d9d4ff'); drawStars(stars.mid,0.45,'#fff0ff'); drawStars(stars.near,0.8,'#ffffff');
     const g=ctx.createLinearGradient(0,0,0,cfg.height); g.addColorStop(0,'rgba(255,255,255,0.02)'); g.addColorStop(1,'rgba(255,120,160,0.04)'); ctx.fillStyle=g; ctx.fillRect(0,0,cfg.width,cfg.height);
@@ -488,17 +456,22 @@
   function togglePause(){ if(state.mode!=='playing') return; state.paused=!state.paused; pauseBtn.textContent=state.paused?'▶️':'⏸️'; }
 
   // Buttons
-  const playBtn = document.getElementById('playBtn');
   playBtn.onclick=startGame;
   retryBtn.onclick=()=>{ state.mode='start'; elGameOver.classList.add('hidden'); elStart.classList.remove('hidden'); };
   againBtn.onclick=()=>{ state.mode='start'; elWin.classList.add('hidden'); elStart.classList.remove('hidden'); };
   pauseBtn.onclick=togglePause;
   muteBtn.onclick=toggleMute;
 
-  // Root click only starts when on Start overlay
-  root.addEventListener('click', ()=>{ if(state.mode==='start') startGame(); });
-
-  // Choose journey (direct listeners)
+  // Choose journey (attach once)
+  document.querySelectorAll('#choose .choice').forEach(card => {
+    card.setAttribute('tabindex','0');
+    card.setAttribute('role','button');
+    card.addEventListener('click', () => chooseJourney(card.dataset.key));
+    card.addEventListener('touchstart', () => chooseJourney(card.dataset.key), {passive:true});
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseJourney(card.dataset.key); }
+    });
+  });
   function chooseJourney(key){
     selected = key;
     loadSpritesFor(key);
@@ -510,20 +483,6 @@
     elStart.classList.remove('hidden');
     state.mode='start';
   }
-  document.querySelectorAll('#choose .choice').forEach(card => {
-    card.setAttribute('tabindex','0');
-    card.setAttribute('role','button');
-    card.addEventListener('click', () => chooseJourney(card.dataset.key));
-    card.addEventListener('touchstart', () => chooseJourney(card.dataset.key), {passive:true});
-    card.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseJourney(card.dataset.key); }
-    });
-  });
-
-  /* ===== Stars helpers ===== */
-  const stars={far:makeStars(40,.15), mid:makeStars(28,.35), near:makeStars(20,.65)}; let scroll=0;
-  function makeStars(n,tw){const a=[]; for(let i=0;i<n;i++) a.push({x:Math.random()*cfg.width,y:Math.random()*cfg.height,s:Math.random()*2+1,a:0.6+Math.random()*0.4,tw:tw*(0.5+Math.random())}); return a;}
-  function drawStars(layer,mul,color){ctx.save(); ctx.fillStyle=color; for(const st of layer){const x=(st.x-(scroll*mul)%(cfg.width+50)); const xx=x<-10?x+cfg.width+50:x; const tw=0.85+Math.sin(state.t*2+st.x*0.01)*0.15*st.tw; ctx.globalAlpha=st.a*tw; ctx.fillRect(xx,st.y,st.s,st.s);} ctx.restore(); ctx.globalAlpha=1;}
 
   updateHUD();
   requestAnimationFrame(loop);
