@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Mini Aaron: Flight to Zarifa</title>
+<title>Mini Aaron: Flight to Zarifa — Journey Select</title>
 <style>
   :root{ --bg-1:#0b0820; --bg-2:#160f32; --bg-3:#201443; --accent:#ff5a7a; --accent-2:#b084ff; }
   html,body{height:100%;margin:0;background:
@@ -26,14 +26,20 @@
 
   .overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,0,20,.78);z-index:10;transition:opacity .25s}
   .overlay.hidden{opacity:0;pointer-events:none}
-  .card{background:rgba(255,255,255,.07);padding:28px;border-radius:16px;text-align:center;border:1px solid rgba(255,255,255,.15);max-width:720px}
+  .card{background:rgba(255,255,255,.07);padding:28px;border-radius:16px;text-align:center;border:1px solid rgba(255,255,255,.15);max-width:760px}
   .action{border:none;padding:12px 18px;border-radius:12px;font-weight:800;cursor:pointer;background:linear-gradient(180deg,var(--accent),#ff87a0);color:#fff}
+
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(180px,1fr));gap:14px;margin-top:14px}
+  .choice{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.15);cursor:pointer}
+  .choice img{width:36px;height:36px;image-rendering:pixelated}
+  .choice b{font-size:16px}
+  .sub{opacity:.8;font-size:12px}
 
   .holdZone{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:7;background:rgba(255,255,255,.08);
             border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(6px);padding:10px 16px;border-radius:999px;user-select:none}
   .hint{opacity:.85;font-size:12px;margin-top:6px}
 
-  /* Mobile “no highlight / no scroll” fix */
+  /* Mobile “no highlight / no scroll” fix (allow UI taps) */
   html, body, #gameRoot, canvas {
     touch-action: none; -ms-touch-action: none; overscroll-behavior: none;
     user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
@@ -43,7 +49,7 @@
 </head>
 <body>
 <div id="gameRoot">
-  <canvas id="game" tabindex="0" aria-label="Mini Aaron Flight Game"></canvas>
+  <canvas id="game" tabindex="0" aria-label="Journey Flight Game"></canvas>
 
   <div class="hud">
     <div class="pill" id="livesPill">❤️❤️❤️</div>
@@ -58,12 +64,26 @@
 
   <div class="holdZone" id="holdZone">Hold to fly ↑ • Space / ↑ / W also work</div>
 
-  <!-- Start -->
-  <div class="overlay" id="start">
+  <!-- Choose Journey -->
+  <div class="overlay" id="choose">
     <div class="card">
-      <h1 style="margin:0 0 8px">The Flight to Zarifa ✈️💜</h1>
+      <h1 style="margin:0 0 10px">Choose Your Journey ✈️💜</h1>
+      <div class="grid">
+        <div class="choice" data-key="aaron"><img src="aaron.png" alt="Aaron" /><div><b>Aaron</b><div class="sub">→ Zarifa</div></div></div>
+        <div class="choice" data-key="asef"><img src="asef.png" alt="Asef" /><div><b>Asef</b><div class="sub">→ Wafia</div></div></div>
+        <div class="choice" data-key="tajwar"><img src="tajwar.png" alt="Tajwar" /><div><b>Tajwar</b><div class="sub">→ Sehely</div></div></div>
+        <div class="choice" data-key="labib"><img src="labib.png" alt="Labib" /><div><b>Labib</b><div class="sub">→ Zarin</div></div></div>
+      </div>
+      <p class="hint" style="margin-top:12px">Pick someone above first. You’ll get a “Fly!” screen next.</p>
+    </div>
+  </div>
+
+  <!-- Start (appears after choosing) -->
+  <div class="overlay hidden" id="start">
+    <div class="card">
+      <h1 style="margin:0 0 8px" id="startTitle">The Flight ✈️</h1>
       <p style="margin:0">Hold <b>Space / ↑ / W</b> or <b>hold screen/trackpad</b> to go up. Dodge meteors, birds, satellites, clouds, and gusts!</p>
-      <p class="hint">3 lives. Hit = lose a heart. At 0 → <b>Game Over</b>. Reach Zarifa → <b>HUG WIN</b>.</p>
+      <p class="hint">3 lives. Hit = lose a heart. At 0 → <b>Game Over</b>. Reach your goal → <b>HUG WIN</b>.</p>
       <button class="action" id="playBtn">🎬 Fly!</button>
     </div>
   </div>
@@ -77,11 +97,11 @@
     </div>
   </div>
 
-  <!-- Win (hug.png with SVG fallback) -->
+  <!-- Win (dynamic image & names) -->
   <div class="overlay hidden" id="win">
     <div class="card">
-      <h2 style="margin:0 0 10px">Landed in Bangladesh — Hug time 💖</h2>
-      <img id="hugImg" src="hug.png" alt="Aaron and Zarifa hugging"
+      <h2 style="margin:0 0 10px" id="winTitle">Landed — Hug time 💖</h2>
+      <img id="hugImg" src="hug.png" alt="Hug"
         style="image-rendering:pixelated;max-width:320px;width:100%;height:auto;border-radius:8px;border:1px solid rgba(255,255,255,.2);" />
       <div id="hugFallback" style="display:none; margin:0 auto; max-width:320px">
         <svg viewBox="0 0 240 160" width="320" height="214" style="image-rendering:pixelated">
@@ -98,7 +118,7 @@
           <rect x="110" y="112" width="20" height="4" fill="#ffd0d6"/>
         </svg>
       </div>
-      <p style="margin:8px 0 14px">Mini Aaron & Zarifa hug and embrace. 🫶</p>
+      <p id="winCaption" style="margin:8px 0 14px">They hug and embrace. 🫶</p>
       <button class="action" id="againBtn">↻ Play again</button>
     </div>
   </div>
@@ -106,6 +126,15 @@
 
 <script>
 (() => {
+  /* ===== Journey roster ===== */
+  const roster = {
+    aaron: { playerName:'Aaron', playerSprite:'aaron.png', gfName:'Zarifa', gfSprite:'zarifa.png', winImage:'hug.png' },
+    asef:  { playerName:'Asef',  playerSprite:'asef.png',  gfName:'Wafia',  gfSprite:'wafia.png',  winImage:'hug_asef.png' },
+    tajwar:{ playerName:'Tajwar',playerSprite:'tajwar.png',gfName:'Sehely', gfSprite:'sehely.png', winImage:'hug_tajwar.png' },
+    labib: { playerName:'Labib', playerSprite:'labib.png', gfName:'Zarin',  gfSprite:'zarin.png',  winImage:'hug_labib.png' }
+  };
+  let selected = null; // key in roster
+
   /* ===== Config ===== */
   const cfg = {
     width:960, height:540,
@@ -119,7 +148,7 @@
   /* ===== State ===== */
   const state = {
     dpr:Math.min(2,window.devicePixelRatio||1),
-    mode:'start',      // 'start' | 'playing' | 'gameover' | 'win'
+    mode:'choose',     // 'choose' | 'start' | 'playing' | 'gameover' | 'win'
     t:0, dist:0, lastSpawn:0,
     lives:cfg.livesStart, muted:false, paused:false
   };
@@ -135,31 +164,56 @@
   }
   new ResizeObserver(resize).observe(root); resize();
 
-  /* ===== UI ===== */
+  /* ===== UI refs ===== */
   const elLives = document.getElementById('livesPill');
   const elKm = document.getElementById('km');
   const elProg = document.getElementById('progress');
+  const elChoose = document.getElementById('choose');
   const elStart = document.getElementById('start');
   const elGameOver = document.getElementById('gameover');
   const elWin = document.getElementById('win');
+  const startTitle = document.getElementById('startTitle');
   const playBtn = document.getElementById('playBtn');
   const retryBtn = document.getElementById('retryBtn');
   const againBtn = document.getElementById('againBtn');
   const pauseBtn = document.getElementById('pauseBtn');
   const muteBtn = document.getElementById('muteBtn');
+  const winTitle = document.getElementById('winTitle');
+  const winCaption = document.getElementById('winCaption');
+  const hugImg = document.getElementById('hugImg');
+  const hugFallback = document.getElementById('hugFallback');
+
+  /* ===== Current images (set on selection) ===== */
+  let playerImg=null, playerReady=false;
+  let goalImg=null,   goalReady=false;
+
+  function loadSpritesFor(key){
+    const conf = roster[key];
+    // Player sprite
+    playerImg = new Image(); playerReady=false;
+    playerImg.onload=()=>playerReady=true;
+    playerImg.onerror=()=>playerReady=false;
+    playerImg.src = conf.playerSprite;
+
+    // Goal sprite
+    goalImg = new Image(); goalReady=false;
+    goalImg.onload=()=>goalReady=true;
+    goalImg.onerror=()=>goalReady=false;
+    goalImg.src = conf.gfSprite;
+
+    // Win image
+    hugImg.style.display='block'; hugFallback.style.display='none';
+    hugImg.src = conf.winImage;
+  }
 
   function updateHUD(){
     elLives.textContent = '❤️'.repeat(state.lives) + '🤍'.repeat(Math.max(0, cfg.livesStart - state.lives));
     elKm.textContent = Math.max(0, cfg.targetKm - Math.floor(state.dist)).toLocaleString();
     elProg.style.setProperty('--p', (state.dist/cfg.targetKm*100).toFixed(2));
   }
-
-  // Hug image fallback
-  const hugImg = document.getElementById('hugImg');
-  const hugFallback = document.getElementById('hugFallback');
   hugImg.addEventListener('error', ()=>{ hugImg.style.display='none'; hugFallback.style.display='block'; });
 
-  /* ===== Audio ===== */
+  /* ===== Audio (unchanged) ===== */
   let actx, master, sfxGain, musicGain, oscA, oscB, chordTimer=null;
   function initAudio(){
     if(actx) return;
@@ -167,13 +221,11 @@
     master = actx.createGain(); master.connect(actx.destination); master.gain.value = state.muted ? 0 : .8;
     sfxGain = actx.createGain(); sfxGain.connect(master); sfxGain.gain.value = .8;
     musicGain = actx.createGain(); musicGain.connect(master); musicGain.gain.value = .10;
-
     oscA = actx.createOscillator(); oscB = actx.createOscillator();
     const gA = actx.createGain(), gB = actx.createGain(); gA.gain.value=0; gB.gain.value=0;
     oscA.type='sine'; oscB.type='triangle';
     oscA.connect(gA).connect(musicGain); oscB.connect(gB).connect(musicGain);
     oscA.start(); oscB.start();
-
     const chords=[[220,275],[176,330],[293,247],[220,275]]; let i=0;
     function tick(){const [a,b]=chords[i%chords.length]; i++;
       oscA.frequency.setTargetAtTime(a,actx.currentTime,.2);
@@ -198,7 +250,7 @@
       if(e.code==="KeyP"){ togglePause(); }
       if(e.code==="KeyM"){ toggleMute(); }
     }else{
-      if(isRestartKey(e)){ e.preventDefault(); startGame(); }
+      if(isRestartKey(e) && state.mode==='start'){ e.preventDefault(); startGame(); }
     }
   }
   function up(e){ if(isFlyKey(e)){ pressing=false; e.preventDefault(); } }
@@ -206,37 +258,46 @@
   window.addEventListener('keyup',up,true);
   window.addEventListener('keypress',e=>{ if(isFlyKey(e)||isRestartKey(e)) e.preventDefault(); },true);
 
-  // Mobile touch: prevent highlight/scroll, allow UI taps
+  // Touch: block page gestures but allow UI
   ['touchstart','touchmove','touchend','touchcancel'].forEach(type => {
     root.addEventListener(type, (e) => {
       const target = e.target;
-      if (target.closest('.btn, button, .action, #start, #gameover, #win')) {
-        return; // let UI work
-      }
-      e.preventDefault(); // block page behavior
-
+      if (target.closest('.btn, button, .action, #start, #gameover, #win, #choose')) return;
+      e.preventDefault();
       if (state.mode === 'playing') {
         if (type === 'touchstart') pressing = true;
         if (type === 'touchend' || type === 'touchcancel') pressing = false;
-      } else {
+      } else if (state.mode==='start') {
         if (type === 'touchstart') startGame();
       }
     }, { passive: false });
   });
   root.addEventListener('wheel', (e) => { e.preventDefault(); }, { passive: false });
 
-  root.addEventListener('click', ()=>{ if(state.mode!=='playing') startGame(); });
-  window.addEventListener('blur',()=>pressing=false);
-  document.addEventListener('visibilitychange',()=>{ if(document.hidden) pressing=false; });
+  // Start overlay buttons
+  playBtn.onclick=startGame;
+  retryBtn.onclick=()=>{ state.mode='start'; elGameOver.classList.add('hidden'); elStart.classList.remove('hidden'); };
+  againBtn.onclick=()=>{ state.mode='start'; elWin.classList.add('hidden'); elStart.classList.remove('hidden'); };
+
+  // Choose journey clicks
+  elChoose.addEventListener('click', (e)=>{
+    const btn = e.target.closest('.choice');
+    if(!btn) return;
+    selected = btn.getAttribute('data-key');
+    loadSpritesFor(selected);
+    const conf = roster[selected];
+    startTitle.textContent = `The Flight to ${conf.gfName} ✈️💜`;
+    winTitle.textContent = `Landed — ${conf.playerName} & ${conf.gfName}`;
+    winCaption.textContent = `${conf.playerName} and ${conf.gfName} hug and embrace. 🫶`;
+    elChoose.classList.add('hidden');
+    elStart.classList.remove('hidden');
+    state.mode='start';
+  });
 
   /* ===== Parallax Stars ===== */
   const stars={far:makeStars(40,.15), mid:makeStars(28,.35), near:makeStars(20,.65)}; let scroll=0;
   function makeStars(n,tw){const a=[]; for(let i=0;i<n;i++) a.push({x:Math.random()*cfg.width,y:Math.random()*cfg.height,s:Math.random()*2+1,a:0.6+Math.random()*0.4,tw:tw*(0.5+Math.random())}); return a;}
   function drawStars(layer,mul,color){ctx.save(); ctx.fillStyle=color; for(const st of layer){const x=(st.x-(scroll*mul)%(cfg.width+50)); const xx=x<-10?x+cfg.width+50:x; const tw=0.85+Math.sin(state.t*2+st.x*0.01)*0.15*st.tw; ctx.globalAlpha=st.a*tw; ctx.fillRect(xx,st.y,st.s,st.s);} ctx.restore(); ctx.globalAlpha=1;}
-
-  /* ===== Sprites ===== */
-  const doggoImg=new Image(); doggoImg.src="doggo.png"; let doggoReady=false; doggoImg.onload=()=>doggoReady=true;
-  const zarifaImg=new Image(); zarifaImg.src="zarifa.png"; let zarifaReady=false; zarifaImg.onload=()=>zarifaReady=true;
 
   /* ===== Entities ===== */
   class Plane{
@@ -254,17 +315,24 @@
       ctx.save(); ctx.translate(this.x,this.y);
       ctx.globalAlpha=(this.blink>0 && Math.floor(this.blink*20)%2===0)?0.35:1;
 
-      // ship
+      // simple ship
       ctx.fillStyle='#e5e2ff'; ctx.fillRect(-this.w/2,-this.h/2,this.w,this.h);
       ctx.fillStyle='#b084ff'; ctx.fillRect(-14,-this.h/2-10,52,12);
       ctx.fillStyle='#ff7da0'; ctx.fillRect(this.w/2-8,-this.h/2,8,this.h);
       ctx.globalAlpha=.5; ctx.fillStyle='#ff7da0'; ctx.fillRect(-this.w/2-6,-2,4,4); ctx.globalAlpha=1;
 
-      // chibi Aaron on top
+      // selected player sprite on top
       const w=36,h=36,x=-w/2,y=-this.h/2-h+6;
-      if(doggoReady){ const sm=ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled=false; ctx.drawImage(doggoImg,x,y,w,h); ctx.imageSmoothingEnabled=sm; }
-      else{ ctx.fillStyle='#ffd7c8'; ctx.fillRect(x+10,y+12,16,12); ctx.fillStyle='#0e0b2b'; ctx.fillRect(x+12,y+16,2,2); ctx.fillRect(x+20,y+16,2,2); ctx.fillStyle='#3a2b6d'; ctx.fillRect(x+8,y+24,20,10); ctx.fillStyle='#2a2451'; ctx.fillRect(x+6,y+12,20,2); }
-
+      if(playerReady){
+        const sm=ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled=false;
+        ctx.drawImage(playerImg,x,y,w,h); ctx.imageSmoothingEnabled=sm;
+      } else {
+        // tiny fallback figure
+        ctx.fillStyle='#ffd7c8'; ctx.fillRect(x+10,y+12,16,12);
+        ctx.fillStyle='#0e0b2b'; ctx.fillRect(x+12,y+16,2,2); ctx.fillRect(x+20,y+16,2,2);
+        ctx.fillStyle='#3a2b6d'; ctx.fillRect(x+8,y+24,20,10);
+        ctx.fillStyle='#2a2451'; ctx.fillRect(x+6,y+12,20,2);
+      }
       ctx.restore();
     }
     takeHit(){ if(state.lives>0){ state.lives--; updateHUD(); this.blink=.6; sfx(180,.16,'sawtooth',.35); if(state.lives<=0) gameOver(); } }
@@ -285,7 +353,7 @@
     draw(ctx){
       ctx.save(); ctx.translate(this.x,this.y);
       if(this.kind==='bird'){
-        ctx.fillStyle='#ffdede'; rrect(ctx,-18,-9,36,18,8); ctx.fill();
+        rrect(ctx,-18,-9,36,18,8); ctx.fillStyle='#ffdede'; ctx.fill();
         ctx.fillStyle='#ff7da0'; rrect(ctx,-10,-3,18,6,3); ctx.fill();
         ctx.fillStyle='#2a2451'; ctx.fillRect(8,-2,3,3);
         ctx.fillStyle='#ffc23e'; ctx.beginPath(); ctx.moveTo(18,-2); ctx.lineTo(28,0); ctx.lineTo(18,2); ctx.fill();
@@ -308,15 +376,14 @@
     }
   }
 
-  // Zarifa goal object
   class Goal{
     constructor(){ this.x=cfg.width+140; this.y=cfg.height*0.55; this.w=40; this.h=48; this.speed=320; this.active=true; }
-    rect(){ return {x:this.x-this.w/2,y:this.y-this.h/2,w:this.w,h:this.h}; }  /* <-- FIXED HERE */
+    rect(){ return {x:this.x-this.w/2,y:this.y-this.h/2,w:this.w,h:this.h}; }
     update(dt){ this.x -= this.speed*dt; if(this.x<-120) this.active=false; }
     draw(ctx){
-      if(!zarifaReady) return;
+      if(!goalReady) return;
       const sm=ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled=false;
-      ctx.drawImage(zarifaImg, this.x-this.w/2, this.y-this.h, this.w, this.h);
+      ctx.drawImage(goalImg, this.x-this.w/2, this.y-this.h, this.w, this.h);
       ctx.imageSmoothingEnabled=sm;
     }
   }
@@ -327,7 +394,7 @@
 
   const plane=new Plane();
   const obstacles=[];
-  let goal=null; // Zarifa appears near the finish
+  let goal=null;
 
   function spawnObstacle(){
     const r=Math.random();
@@ -338,11 +405,10 @@
   }
 
   /* ===== Loop ===== */
-  let last=performance.now();
+  let last=performance.now(), scroll=0;
   function loop(now){
     const dt=Math.min(0.033,(now-last)/1000); last=now;
-    if(state.mode!=='playing'){ requestAnimationFrame(loop); return; }
-    if(state.paused){ requestAnimationFrame(loop); return; }
+    if(state.mode!=='playing' || state.paused){ requestAnimationFrame(loop); return; }
 
     state.t+=dt; state.lastSpawn+=dt; scroll+=(cfg.baseSpeed*dt);
 
@@ -351,7 +417,7 @@
     const interval=Math.max(0.6, cfg.spawnBase - (state.dist/cfg.targetKm)*0.4);
     if(state.lastSpawn>interval){ spawnObstacle(); state.lastSpawn=0; }
 
-    // reveal Zarifa near finish
+    // reveal goal near finish
     if(!goal && (cfg.targetKm - state.dist) <= cfg.goalRevealKm){ goal=new Goal(); }
 
     // updates
@@ -359,13 +425,12 @@
     for(const ob of obstacles) ob.update(dt);
     if(goal) goal.update(dt);
 
-    // collisions with obstacles → lose life
+    // collisions
     const pr=plane.rect();
     for(const ob of obstacles){
       if(!ob.alive) continue;
       if(overlap(pr, ob.rect())){ ob.alive=false; plane.takeHit(); break; }
     }
-    // collision with Zarifa → win
     if(goal && goal.active && overlap(pr, goal.rect())){ return win(); }
 
     // cull
@@ -380,13 +445,16 @@
     if(goal) goal.draw(ctx);
     for(const ob of obstacles) ob.draw(ctx);
     updateHUD();
-
     if(state.dist>=cfg.targetKm) return win();
+
     requestAnimationFrame(loop);
   }
 
   /* ===== States ===== */
   function startGame(){
+    if(!selected){ // guard if someone bypasses choose
+      elChoose.classList.remove('hidden'); state.mode='choose'; return;
+    }
     state.mode='playing'; state.paused=false; state.t=0; state.dist=0; state.lastSpawn=0; state.lives=cfg.livesStart;
     obstacles.length=0; goal=null; pressing=false; updateHUD();
     elStart.classList.add('hidden'); elGameOver.classList.add('hidden'); elWin.classList.add('hidden');
@@ -397,10 +465,13 @@
   function win(){ state.mode='win'; elWin.classList.remove('hidden'); sfx(1200,.12,'triangle',.35); sfx(1500,.18,'square',.25); }
   function togglePause(){ if(state.mode!=='playing') return; state.paused=!state.paused; pauseBtn.textContent=state.paused?'▶️':'⏸️'; }
 
-  // Buttons
-  playBtn.onclick=startGame; retryBtn.onclick=startGame; againBtn.onclick=startGame; pauseBtn.onclick=togglePause; muteBtn.onclick=toggleMute;
+  pauseBtn.onclick=togglePause; muteBtn.onclick=()=>{ state.muted=!state.muted; muteBtn.textContent=state.muted?'🔇':'🔊'; if(master) master.gain.value=state.muted?0:.8; };
+
+  // Prevent root-click from starting during choose; only during start
+  root.addEventListener('click', ()=>{ if(state.mode==='start') startGame(); });
 
   updateHUD();
+  requestAnimationFrame(loop);
 })();
 </script>
 </body>
