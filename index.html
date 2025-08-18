@@ -5,14 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
 <title>Mini Aaron: Flight to Zarifa</title>
 <style>
-  :root{
-    --bg-1:#0f0620; --bg-2:#1b0a38;
-    --accent:#ff5a7a; --accent-2:#b084ff;
-  }
+  :root{--bg-1:#0f0620;--bg-2:#1b0a38;--accent:#ff5a7a;--accent-2:#b084ff;}
   html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg-1),var(--bg-2));color:#fff;font-family:system-ui;}
   #gameRoot{position:relative;max-width:960px;margin:0 auto;height:100vh;overflow:hidden;}
   canvas{display:block;width:100%;height:100%}
-  .hud{position:absolute;top:12px;left:12px;display:flex;gap:10px;z-index:5;}
+  .hud{position:absolute;top:12px;left:12px;display:flex;gap:10px;z-index:5}
   .pill{background:rgba(0,0,0,.35);padding:8px 12px;border-radius:999px}
   .hud-right{position:absolute;top:12px;right:12px;display:flex;gap:10px;z-index:6}
   .bar{--p:0;position:relative;height:10px;width:200px;border-radius:999px;background:rgba(255,255,255,.15);overflow:hidden}
@@ -23,6 +20,10 @@
   .overlay.hidden{opacity:0;pointer-events:none}
   .card{background:rgba(255,255,255,.06);padding:28px;border-radius:16px;text-align:center}
   .action{border:none;padding:12px 18px;border-radius:12px;font-weight:800;cursor:pointer;background:linear-gradient(180deg,var(--accent),#ff87a0);color:#fff}
+  /* onscreen helper button (for trackpad hold) */
+  .holdZone{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:7;
+            background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(6px);
+            padding:10px 16px;border-radius:999px;user-select:none}
 </style>
 </head>
 <body>
@@ -40,11 +41,13 @@
   </div>
   <div class="rec">REC</div>
 
+  <div class="holdZone" id="holdZone">Hold here (or anywhere) to fly ↑ · Space / ↑ / W also work</div>
+
   <!-- Start screen -->
   <div class="overlay" id="start">
     <div class="card">
       <h1>The Flight to Zarifa ✈️💜</h1>
-      <p>Hold <b>Space / ↑ / W</b> to fly up, release to glide.<br>Reach Bangladesh to hug Zarifa!</p>
+      <p>MacBook friendly: <b>hold trackpad</b> anywhere to go up • or hold <b>Space / ↑ / W</b>.</p>
       <button class="action" id="playBtn">🎬 Fly!</button>
     </div>
   </div>
@@ -60,105 +63,109 @@
 
 <script>
 (() => {
-  const cfg = {width:960,height:540,gravity:1400,thrust:1000,maxVy:600,baseSpeed:300,targetKm:10000,lives:3};
-  const state = {dpr:window.devicePixelRatio||1,playing:false,paused:false,t:0,dt:0,dist:0,lives:cfg.lives,ended:false};
+  const cfg = {width:960,height:540,gravity:1400,thrust:2400,maxVy:800,baseSpeed:300,targetKm:10000,lives:3};
+  const state = {dpr:Math.min(2,window.devicePixelRatio||1),playing:false,paused:false,t:0,dt:0,dist:0,lives:cfg.lives,ended:false};
 
-  const canvas=document.getElementById('game'); const ctx=canvas.getContext('2d');
+  const root = document.getElementById('gameRoot');
+  const canvas = document.getElementById('game'); const ctx = canvas.getContext('2d');
   function resize(){canvas.width=canvas.clientWidth*state.dpr;canvas.height=canvas.clientHeight*state.dpr;ctx.setTransform(state.dpr,0,0,state.dpr,0,0);}
-  new ResizeObserver(resize).observe(document.getElementById('gameRoot')); resize();
+  new ResizeObserver(resize).observe(root); resize();
 
-  const elLives=document.getElementById('lives'),elKm=document.getElementById('km'),elProg=document.getElementById('progress');
-  const elStart=document.getElementById('start'),elEnd=document.getElementById('end');
-  const playBtn=document.getElementById('playBtn'),replayBtn=document.getElementById('replayBtn');
-  const pauseBtn=document.getElementById('pauseBtn'),muteBtn=document.getElementById('muteBtn');
+  const elLives=document.getElementById('lives'), elKm=document.getElementById('km'), elProg=document.getElementById('progress');
+  const elStart=document.getElementById('start'), elEnd=document.getElementById('end');
+  const playBtn=document.getElementById('playBtn'), replayBtn=document.getElementById('replayBtn');
+  const pauseBtn=document.getElementById('pauseBtn'), muteBtn=document.getElementById('muteBtn');
+  const holdZone=document.getElementById('holdZone');
 
-  /* =========================
-     INPUT (bullet-proof)
-  ========================== */
+  /* ========= INPUT (MacBook-proof) ========= */
   let pressing = false;
 
-  function isFlyKey(e) {
-    return (
-      e.code === "Space" || e.code === "Spacebar" ||
-      e.code === "ArrowUp" || e.code === "KeyW" ||
-      e.key === " " || e.key === "w" || e.key === "W"
-    );
+  function isFlyKey(e){
+    const c = e.code, k = e.key;
+    return c==="Space"||c==="Spacebar"||c==="ArrowUp"||c==="KeyW"||k===" "||k==="w"||k==="W";
+  }
+  function down(e){
+    if(isFlyKey(e)){ pressing=true; e.preventDefault(); }
+    if(e.code==="KeyP") togglePause();
+    if(e.code==="KeyM") toggleMute();
+  }
+  function up(e){
+    if(isFlyKey(e)){ pressing=false; e.preventDefault(); }
   }
 
-  function handleDown(e) {
-    if (isFlyKey(e)) { pressing = true; e.preventDefault(); }
-    if (e.code === "KeyP") togglePause();
-    if (e.code === "KeyM") toggleMute();
-  }
-  function handleUp(e) {
-    if (isFlyKey(e)) { pressing = false; e.preventDefault(); }
-  }
+  // listen at window level, capture phase; include keypress to catch Safari space quirks
+  window.addEventListener('keydown', down, true);
+  window.addEventListener('keyup', up, true);
+  window.addEventListener('keypress', (e)=>{ if(isFlyKey(e)) e.preventDefault(); }, true);
 
-  window.addEventListener("keydown", handleDown, true);
-  window.addEventListener("keyup", handleUp, true);
+  // pointer (trackpad/mouse) anywhere on the game
+  const pressStart=()=>{ pressing=true; };
+  const pressEnd = ()=>{ pressing=false; };
+  ['pointerdown','mousedown','touchstart'].forEach(t=> root.addEventListener(t, pressStart, {passive:false}));
+  ['pointerup','pointercancel','pointerleave','mouseup','touchend'].forEach(t=> root.addEventListener(t, pressEnd, {passive:false}));
 
-  // Touch / mouse
-  const root=document.getElementById('gameRoot');
-  root.addEventListener("pointerdown", ()=>pressing=true);
-  root.addEventListener("pointerup", ()=>pressing=false);
-  root.addEventListener("pointercancel", ()=>pressing=false);
-  root.addEventListener("pointerleave", ()=>pressing=false);
-
-  /* =========================
-     PLANE
-  ========================== */
+  /* ========= PLANE ========= */
   class Plane{
-    constructor(){this.x=160;this.y=cfg.height*0.5;this.vy=0;this.w=68;this.h=28;}
+    constructor(){ this.x=160; this.y=cfg.height*0.6; this.vy=0; this.w=68; this.h=28; }
     update(dt){
-      const thrust=pressing?-cfg.thrust:0;
-      this.vy+=(cfg.gravity+thrust)*dt;
-      this.vy=Math.max(-cfg.maxVy,Math.min(cfg.maxVy,this.vy));
-      this.y+=this.vy*dt;
-      if(this.y<30){this.y=30;this.vy=0}
-      if(this.y>cfg.height-30){this.y=cfg.height-30;this.vy=0}
+      const accel = cfg.gravity - (pressing ? cfg.thrust : 0); // press = go up
+      this.vy += accel * dt;
+      this.vy = Math.max(-cfg.maxVy, Math.min(cfg.maxVy, this.vy));
+      this.y  += this.vy * dt;
+      if(this.y<30){ this.y=30; this.vy=0; }
+      if(this.y>cfg.height-30){ this.y=cfg.height-30; this.vy=0; }
     }
     draw(ctx){
-      ctx.save();ctx.translate(this.x,this.y);
-      ctx.fillStyle='#e5e2ff';ctx.fillRect(-this.w/2,-this.h/2,this.w,this.h);
+      ctx.save(); ctx.translate(this.x,this.y);
+      // simple visible block (swap for your fancy plane later)
+      ctx.fillStyle='#e5e2ff'; ctx.fillRect(-this.w/2,-this.h/2,this.w,this.h);
       ctx.restore();
     }
   }
-  const plane=new Plane();
+  const plane = new Plane();
 
   function updateHUD(){
-    elLives.textContent=`x${state.lives}`;
-    elKm.textContent=(cfg.targetKm-Math.floor(state.dist)).toLocaleString();
-    elProg.style.setProperty('--p',(state.dist/cfg.targetKm*100).toFixed(2));
+    elLives.textContent = `x${state.lives}`;
+    elKm.textContent = (cfg.targetKm - Math.floor(state.dist)).toLocaleString();
+    elProg.style.setProperty('--p', (state.dist/cfg.targetKm*100).toFixed(2));
   }
 
+  /* ========= LOOP ========= */
   let last=performance.now();
   function loop(now){
-    const dt=Math.min(0.033,(now-last)/1000);last=now;
-    if(state.paused||!state.playing){requestAnimationFrame(loop);return;}
-    state.t+=dt; plane.update(dt); state.dist=Math.min(cfg.targetKm,state.dist+(cfg.baseSpeed/3.5)*dt);
-    ctx.fillStyle='#120a1d';ctx.fillRect(0,0,cfg.width,cfg.height);
+    const dt=Math.min(0.033,(now-last)/1000); last=now;
+    if(state.paused||!state.playing){ requestAnimationFrame(loop); return; }
+    state.t+=dt;
+    plane.update(dt);
+    state.dist = Math.min(cfg.targetKm, state.dist + (cfg.baseSpeed/3.5)*dt);
+    ctx.fillStyle='#120a1d'; ctx.fillRect(0,0,cfg.width,cfg.height);
     plane.draw(ctx);
     updateHUD();
-    if(state.dist>=cfg.targetKm&&!state.ended){state.ended=true;endGame(true);}
+    if(state.dist>=cfg.targetKm && !state.ended){ state.ended=true; endGame(true); }
     requestAnimationFrame(loop);
   }
 
+  /* ========= CONTROL ========= */
   function startGame(){
-    state.playing=true;state.paused=false;state.t=0;state.dist=0;state.lives=cfg.lives;state.ended=false;
-    elStart.classList.add('hidden');elEnd.classList.add('hidden');
-    window.focus();canvas.focus();
-    requestAnimationFrame(n=>{last=n;requestAnimationFrame(loop);});
+    state.playing=true; state.paused=false; state.t=0; state.dist=0; state.lives=cfg.lives; state.ended=false;
+    elStart.classList.add('hidden'); elEnd.classList.add('hidden');
+    window.focus(); canvas.focus();
+    requestAnimationFrame(n=>{ last=n; requestAnimationFrame(loop); });
   }
   function endGame(won){
     state.playing=false;
-    if(won){elEnd.classList.remove('hidden');}
-    else{elStart.classList.remove('hidden');}
+    if(won){ elEnd.classList.remove('hidden'); } else { elStart.classList.remove('hidden'); }
   }
-  function togglePause(){if(!state.playing)return;state.paused=!state.paused;pauseBtn.textContent=state.paused?'▶️':'⏸️';}
-  function toggleMute(){muteBtn.textContent= muteBtn.textContent==='🔊'?'🔇':'🔊';}
+  function togglePause(){ if(!state.playing) return; state.paused=!state.paused; pauseBtn.textContent=state.paused?'▶️':'⏸️'; }
+  function toggleMute(){ muteBtn.textContent = (muteBtn.textContent==='🔊'?'🔇':'🔊'); }
 
-  playBtn.onclick=()=>startGame();
-  replayBtn.onclick=()=>{elEnd.classList.add('hidden');startGame();}
+  playBtn.onclick = startGame;
+  replayBtn.onclick = ()=>{ elEnd.classList.add('hidden'); startGame(); };
+
+  // safety: if the tab loses focus, stop ascending
+  window.addEventListener('blur', ()=> pressing=false);
+  document.addEventListener('visibilitychange', ()=>{ if(document.hidden) pressing=false; });
+
   updateHUD();
 })();
 </script>
