@@ -8,7 +8,6 @@
   :root{
     --bg-1:#0f0620; --bg-2:#1b0a38;
     --accent:#ff5a7a; --accent-2:#b084ff;
-    --hud:#ffffffcc; --scan:rgba(255,255,255,0.05);
   }
   html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg-1),var(--bg-2));color:#fff;font-family:system-ui;}
   #gameRoot{position:relative;max-width:960px;margin:0 auto;height:100vh;overflow:hidden;}
@@ -20,7 +19,7 @@
   .bar::after{content:"";position:absolute;inset:0;width:calc(var(--p)*1%);background:linear-gradient(90deg,var(--accent),var(--accent-2))}
   .rec{position:absolute;top:14px;right:14px;color:#ff4d4d;font-weight:800;text-shadow:0 0 10px #ff4d4d80}
   .rec::before{content:"● "; }
-  .overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,0,20,.8);z-index:10;}
+  .overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,0,20,.8);z-index:10;transition:opacity .3s}
   .overlay.hidden{opacity:0;pointer-events:none}
   .card{background:rgba(255,255,255,.06);padding:28px;border-radius:16px;text-align:center}
   .action{border:none;padding:12px 18px;border-radius:12px;font-weight:800;cursor:pointer;background:linear-gradient(180deg,var(--accent),#ff87a0);color:#fff}
@@ -73,32 +72,64 @@
   const playBtn=document.getElementById('playBtn'),replayBtn=document.getElementById('replayBtn');
   const pauseBtn=document.getElementById('pauseBtn'),muteBtn=document.getElementById('muteBtn');
 
-  let pressing=false;
-  function handleDown(e){
-    const k=e.code||e.key||'';
-    if(k==='Space'||k==='Spacebar'||k==='ArrowUp'||k==='KeyW'){pressing=true;e.preventDefault();}
-    else if(k==='KeyP'){togglePause();}
-    else if(k==='KeyM'){toggleMute();}
-  }
-  function handleUp(e){
-    const k=e.code||e.key||'';
-    if(k==='Space'||k==='Spacebar'||k==='ArrowUp'||k==='KeyW'){pressing=false;e.preventDefault();}
-  }
-  document.addEventListener('keydown',handleDown,{capture:true});
-  document.addEventListener('keyup',handleUp,{capture:true});
-  // touch
-  const root=document.getElementById('gameRoot');
-  root.addEventListener('pointerdown',()=>pressing=true);
-  root.addEventListener('pointerup',()=>pressing=false);
+  /* =========================
+     INPUT (bullet-proof)
+  ========================== */
+  let pressing = false;
 
+  function isFlyKey(e) {
+    return (
+      e.code === "Space" || e.code === "Spacebar" ||
+      e.code === "ArrowUp" || e.code === "KeyW" ||
+      e.key === " " || e.key === "w" || e.key === "W"
+    );
+  }
+
+  function handleDown(e) {
+    if (isFlyKey(e)) { pressing = true; e.preventDefault(); }
+    if (e.code === "KeyP") togglePause();
+    if (e.code === "KeyM") toggleMute();
+  }
+  function handleUp(e) {
+    if (isFlyKey(e)) { pressing = false; e.preventDefault(); }
+  }
+
+  window.addEventListener("keydown", handleDown, true);
+  window.addEventListener("keyup", handleUp, true);
+
+  // Touch / mouse
+  const root=document.getElementById('gameRoot');
+  root.addEventListener("pointerdown", ()=>pressing=true);
+  root.addEventListener("pointerup", ()=>pressing=false);
+  root.addEventListener("pointercancel", ()=>pressing=false);
+  root.addEventListener("pointerleave", ()=>pressing=false);
+
+  /* =========================
+     PLANE
+  ========================== */
   class Plane{
     constructor(){this.x=160;this.y=cfg.height*0.5;this.vy=0;this.w=68;this.h=28;}
-    update(dt){const thrust=pressing?-cfg.thrust:0;this.vy+=(cfg.gravity+thrust)*dt;this.vy=Math.max(-cfg.maxVy,Math.min(cfg.maxVy,this.vy));this.y+=this.vy*dt;if(this.y<30){this.y=30;this.vy=0}if(this.y>cfg.height-30){this.y=cfg.height-30;this.vy=0}}
-    draw(ctx){ctx.save();ctx.translate(this.x,this.y);ctx.fillStyle='#e5e2ff';ctx.fillRect(-this.w/2,-this.h/2,this.w,this.h);ctx.restore();}
+    update(dt){
+      const thrust=pressing?-cfg.thrust:0;
+      this.vy+=(cfg.gravity+thrust)*dt;
+      this.vy=Math.max(-cfg.maxVy,Math.min(cfg.maxVy,this.vy));
+      this.y+=this.vy*dt;
+      if(this.y<30){this.y=30;this.vy=0}
+      if(this.y>cfg.height-30){this.y=cfg.height-30;this.vy=0}
+    }
+    draw(ctx){
+      ctx.save();ctx.translate(this.x,this.y);
+      ctx.fillStyle='#e5e2ff';ctx.fillRect(-this.w/2,-this.h/2,this.w,this.h);
+      ctx.restore();
+    }
   }
   const plane=new Plane();
 
-  function updateHUD(){elLives.textContent=`x${state.lives}`;elKm.textContent=(cfg.targetKm-Math.floor(state.dist)).toLocaleString();elProg.style.setProperty('--p',(state.dist/cfg.targetKm*100).toFixed(2));}
+  function updateHUD(){
+    elLives.textContent=`x${state.lives}`;
+    elKm.textContent=(cfg.targetKm-Math.floor(state.dist)).toLocaleString();
+    elProg.style.setProperty('--p',(state.dist/cfg.targetKm*100).toFixed(2));
+  }
 
   let last=performance.now();
   function loop(now){
@@ -112,10 +143,19 @@
     requestAnimationFrame(loop);
   }
 
-  function startGame(){state.playing=true;state.paused=false;state.t=0;state.dist=0;state.lives=cfg.lives;state.ended=false;elStart.classList.add('hidden');elEnd.classList.add('hidden');canvas.focus();requestAnimationFrame(n=>{last=n;requestAnimationFrame(loop);});}
-  function endGame(won){state.playing=false;if(won){elEnd.classList.remove('hidden');}else{elStart.classList.remove('hidden');}}
+  function startGame(){
+    state.playing=true;state.paused=false;state.t=0;state.dist=0;state.lives=cfg.lives;state.ended=false;
+    elStart.classList.add('hidden');elEnd.classList.add('hidden');
+    window.focus();canvas.focus();
+    requestAnimationFrame(n=>{last=n;requestAnimationFrame(loop);});
+  }
+  function endGame(won){
+    state.playing=false;
+    if(won){elEnd.classList.remove('hidden');}
+    else{elStart.classList.remove('hidden');}
+  }
   function togglePause(){if(!state.playing)return;state.paused=!state.paused;pauseBtn.textContent=state.paused?'▶️':'⏸️';}
-  function toggleMute(){/* stub: add audio later */muteBtn.textContent= muteBtn.textContent==='🔊'?'🔇':'🔊';}
+  function toggleMute(){muteBtn.textContent= muteBtn.textContent==='🔊'?'🔇':'🔊';}
 
   playBtn.onclick=()=>startGame();
   replayBtn.onclick=()=>{elEnd.classList.add('hidden');startGame();}
