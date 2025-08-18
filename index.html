@@ -4,768 +4,122 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
 <title>Mini Aaron: Flight to Zarifa</title>
-<meta name="description" content="A romantic runner: fly from Canada to Bangladesh to hug Zarifa!">
 <style>
   :root{
-    --bg-1:#0f0620; /* deep purple night */
-    --bg-2:#1b0a38;
-    --accent:#ff5a7a; /* soft red/pink */
-    --accent-2:#b084ff; /* lilac glow */
-    --hud:#ffffffcc;
-    --scan:rgba(255,255,255,0.05);
-    --good:#65f0a9;
-    --warn:#ffc23e;
-    --bad:#ff6b6b;
+    --bg-1:#0f0620; --bg-2:#1b0a38;
+    --accent:#ff5a7a; --accent-2:#b084ff;
+    --hud:#ffffffcc; --scan:rgba(255,255,255,0.05);
   }
-  html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg-1),var(--bg-2));color:#fff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial,Apple Color Emoji,Segoe UI Emoji;}
-  #gameRoot{position:relative;max-width:960px;margin:0 auto;height:100vh;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.07);border-radius:16px;background:radial-gradient(1200px 100% at 50% 0%,rgba(255,255,255,.06),transparent 60%)}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg-1),var(--bg-2));color:#fff;font-family:system-ui;}
+  #gameRoot{position:relative;max-width:960px;margin:0 auto;height:100vh;overflow:hidden;}
   canvas{display:block;width:100%;height:100%}
-  /* HUD */
-  .hud{position:absolute;inset:12px 12px auto 12px;display:flex;gap:10px;align-items:center;z-index:5;pointer-events:none}
-  .pill{pointer-events:auto;background:rgba(0,0,0,.35);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.15);padding:8px 12px;border-radius:999px;display:flex;align-items:center;gap:8px;font-weight:600}
-  .btn{cursor:pointer;user-select:none}
-  .btn:active{transform:translateY(1px)}
+  .hud{position:absolute;top:12px;left:12px;display:flex;gap:10px;z-index:5;}
+  .pill{background:rgba(0,0,0,.35);padding:8px 12px;border-radius:999px}
   .hud-right{position:absolute;top:12px;right:12px;display:flex;gap:10px;z-index:6}
   .bar{--p:0;position:relative;height:10px;width:200px;border-radius:999px;background:rgba(255,255,255,.15);overflow:hidden}
-  .bar::after{content:"";position:absolute;inset:0;width:calc(var(--p)*1%);background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:999px}
-  .legend{font-size:12px;opacity:.9}
-  .rec{position:absolute;top:14px;right:14px;color:#ff4d4d;font-weight:800;letter-spacing:.08em;text-shadow:0 0 10px #ff4d4d80}
-  .rec::before{content:"●";margin-right:6px}
-  /* Start / End overlays */
-  .overlay{
-    position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(180deg,rgba(5,2,12,.8),rgba(10,4,20,.75));z-index:10;
-    opacity:1;transition:opacity .4s ease;
-  }
+  .bar::after{content:"";position:absolute;inset:0;width:calc(var(--p)*1%);background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+  .rec{position:absolute;top:14px;right:14px;color:#ff4d4d;font-weight:800;text-shadow:0 0 10px #ff4d4d80}
+  .rec::before{content:"● "; }
+  .overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,0,20,.8);z-index:10;}
   .overlay.hidden{opacity:0;pointer-events:none}
-  .card{
-    width:min(720px,92%);border-radius:16px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.5);
-    background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.15)
-  }
-  .title{font-size:clamp(28px,5vw,48px);font-weight:900;margin:0;line-height:1.05;letter-spacing:.01em;text-shadow:0 6px 22px rgba(0,0,0,.5)}
-  .subtitle{margin:.5rem 0 1.25rem;opacity:.9}
-  .actions{display:flex;flex-wrap:wrap;gap:10px}
-  .action{
-    border:none;border-radius:12px;padding:12px 18px;font-weight:800;font-size:16px;cursor:pointer;
-    background:linear-gradient(180deg,var(--accent),#ff87a0);color:#fff;box-shadow:0 10px 24px rgba(255,90,122,.35)
-  }
-  .ghost{background:transparent;border:1px solid rgba(255,255,255,.3);color:#fff}
-  .kbd{font-family:ui-monospace,Menlo,monospace;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:2px 6px;margin:0 2px}
-  /* VHS scanlines */
-  .scanlines{
-    pointer-events:none;position:absolute;inset:0;z-index:4;mix-blend-mode:overlay;background-image:
-      linear-gradient(transparent 50%,var(--scan) 50%),
-      repeating-linear-gradient(transparent,transparent 2px,rgba(0,0,0,.08) 3px,transparent 4px);
-    background-size:100% 2px, 100% 4px;opacity:.6;animation:scan 6s linear infinite;
-  }
-  @keyframes scan{0%{background-position:0 0,0 0}100%{background-position:0 100%,0 0}}
-  /* End scene hug */
-  .end-scene{display:grid;place-items:center;text-align:center;gap:14px}
-  .hug{width:min(360px,70vw);margin:6px auto;filter:drop-shadow(0 12px 28px rgba(0,0,0,.55))}
-  .float-heart{position:absolute;left:50%;transform:translateX(-50%);font-size:22px;animation:float 3s ease-in infinite;opacity:.85}
-  @keyframes float{0%{transform:translate(-50%,0);opacity:0}15%{opacity:.9}70%{opacity:.9}100%{transform:translate(-50%,-120px);opacity:0}}
-  .tiny{font-size:12px;opacity:.8}
-  /* Touch prompt bubble */
-  .touchPrompt{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(6px);padding:8px 12px;border-radius:999px;z-index:7}
-  /* Accessibility toggle */
-  .toggle{display:inline-flex;gap:8px;align-items:center}
+  .card{background:rgba(255,255,255,.06);padding:28px;border-radius:16px;text-align:center}
+  .action{border:none;padding:12px 18px;border-radius:12px;font-weight:800;cursor:pointer;background:linear-gradient(180deg,var(--accent),#ff87a0);color:#fff}
 </style>
 </head>
 <body>
-  <div id="gameRoot" aria-label="Mini Aaron Flight Game">
-    <canvas id="game"></canvas>
+<div id="gameRoot">
+  <canvas id="game" tabindex="0"></canvas>
 
-    <!-- VHS -->
-    <div class="scanlines" id="scan"></div>
-    <div class="rec" aria-hidden="true">REC</div>
+  <div class="hud">
+    <div class="pill">❤️ <span id="lives">x3</span></div>
+    <div class="pill">✈️ Dist: <span id="km">10,000</span></div>
+    <div class="pill bar" id="progress"></div>
+  </div>
+  <div class="hud-right">
+    <div class="pill btn" id="pauseBtn">⏸️</div>
+    <div class="pill btn" id="muteBtn">🔊</div>
+  </div>
+  <div class="rec">REC</div>
 
-    <!-- HUD -->
-    <div class="hud" aria-live="polite">
-      <div class="pill"><span>❤️</span><span id="lives">x3</span></div>
-      <div class="pill"><span>🛡️</span><span id="shield">off</span></div>
-      <div class="pill"><span>✈️ Dist:</span><span id="km">10,000</span><span class="legend">km → BD</span></div>
-      <div class="pill">Zone:
-        <span id="zone">Canada</span>
-      </div>
-      <div class="pill bar" id="progress" title="Journey progress"></div>
-    </div>
-    <div class="hud-right">
-      <div class="pill btn" id="pauseBtn" role="button" aria-label="Pause/Resume">⏸️</div>
-      <div class="pill btn" id="muteBtn" role="button" aria-label="Mute/Unmute">🔊</div>
-      <div class="pill btn" id="rmBtn" role="button" aria-label="Reduce motion">🧘 Reduce motion</div>
-    </div>
-
-    <div class="touchPrompt" id="touchPrompt">Tap & hold to ascend • Release to glide</div>
-
-    <!-- Start overlay -->
-    <div class="overlay" id="start">
-      <div class="card">
-        <h1 class="title">The Flight to Zarifa ✈️💜</h1>
-        <p class="subtitle">Fly mini Aaron from <b>Canada</b> to <b>Bangladesh</b>. Dodge birds, storm clouds, and turbulence. Reach BD to land and <i>hug Zarifa</i>!<br>
-        <span class="tiny">Desktop: press <span class="kbd">Space</span> / <span class="kbd">↑</span> to ascend • <span class="kbd">P</span> pause • <span class="kbd">M</span> mute • Mobile: tap/hold</span>
-        </p>
-        <div class="actions">
-          <button class="action" id="playBtn">🎬 Fly!</button>
-          <button class="action ghost" id="instrBtn">How to play</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- End overlay -->
-    <div class="overlay hidden" id="end">
-      <div class="card end-scene">
-        <svg class="hug" viewBox="0 0 300 220" aria-label="Mini Aaron and Zarifa hugging">
-          <!-- Soft background heart -->
-          <defs>
-            <radialGradient id="g" cx="50%" cy="40%" r="60%">
-              <stop offset="0%" stop-color="#ff7e9f" stop-opacity="0.9"/>
-              <stop offset="100%" stop-color="#ff7e9f" stop-opacity="0"/>
-            </radialGradient>
-          </defs>
-          <ellipse cx="150" cy="110" rx="120" ry="90" fill="url(#g)"/>
-          <!-- Cute chibi hug (stylized, simple) -->
-          <!-- Zarifa -->
-          <g transform="translate(160,70)">
-            <circle cx="0" cy="0" r="26" fill="#ffcfdd" stroke="#5b2b6d" stroke-width="2"/>
-            <path d="M-26,-2 q26,-22 52,0" fill="#f19ec4" stroke="#5b2b6d" stroke-width="2"/> <!-- hair scarf -->
-            <circle cx="-5" cy="-4" r="3" fill="#5b2b6d"/>
-            <circle cx="7" cy="-4" r="3" fill="#5b2b6d"/>
-            <path d="M-5,6 q7,6 14,0" stroke="#5b2b6d" fill="none" stroke-width="2" stroke-linecap="round"/>
-          </g>
-          <!-- Aaron -->
-          <g transform="translate(120,84)">
-            <circle cx="0" cy="0" r="24" fill="#ffd7c8" stroke="#2a2451" stroke-width="2"/>
-            <rect x="-15" y="-9" width="30" height="6" rx="3" fill="#2a2451"/> <!-- glasses -->
-            <circle cx="-7" cy="-6" r="2" fill="#0e0b2b"/>
-            <circle cx="7" cy="-6" r="2" fill="#0e0b2b"/>
-            <path d="M-6,5 q6,5 12,0" stroke="#2a2451" fill="none" stroke-width="2" stroke-linecap="round"/>
-          </g>
-          <!-- Arms hugging -->
-          <path d="M140,96 q20,20 40,0" stroke="#ffd7c8" stroke-width="10" stroke-linecap="round" fill="none"/>
-          <path d="M180,80 q-30,26 -58,6" stroke="#ffcfdd" stroke-width="10" stroke-linecap="round" fill="none"/>
-          <!-- Bodies -->
-          <ellipse cx="132" cy="130" rx="34" ry="22" fill="#3a2b6d"/>
-          <ellipse cx="176" cy="130" rx="36" ry="24" fill="#8d3c7a"/>
-          <!-- Tiny hearts -->
-          <text x="110" y="40" font-size="16">💖</text>
-          <text x="210" y="56" font-size="16">💞</text>
-          <text x="90"  y="70" font-size="16">💗</text>
-        </svg>
-        <div style="position:relative;height:0">
-          <div class="float-heart" style="left:45%;animation-delay:.1s">💖</div>
-          <div class="float-heart" style="left:55%;animation-delay:.6s">💞</div>
-          <div class="float-heart" style="left:50%;animation-delay:1.1s">💗</div>
-        </div>
-        <h2 style="margin:4px 0 0;">Landed in Bangladesh!</h2>
-        <p style="margin:0 0 10px">Mini Aaron &amp; Zarifa hug and embrace. Love wins. 🫶</p>
-        <div class="actions">
-          <button class="action" id="replayBtn">↻ Play again</button>
-        </div>
-        <div class="tiny">Tip: toggle “Reduce motion” if the scanlines or background feel too busy.</div>
-      </div>
+  <!-- Start screen -->
+  <div class="overlay" id="start">
+    <div class="card">
+      <h1>The Flight to Zarifa ✈️💜</h1>
+      <p>Hold <b>Space / ↑ / W</b> to fly up, release to glide.<br>Reach Bangladesh to hug Zarifa!</p>
+      <button class="action" id="playBtn">🎬 Fly!</button>
     </div>
   </div>
 
+  <!-- End screen -->
+  <div class="overlay hidden" id="end">
+    <div class="card">
+      <h2>Mini Aaron & Zarifa Hug 💖</h2>
+      <button class="action" id="replayBtn">↻ Play again</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (() => {
-  /* =========================
-     CONFIG & STATE
-  ========================== */
-  const cfg = {
-    width: 960, height: 540,   // internal canvas size (scaled for DPR)
-    gravity: 1400,             // px/s^2 downward
-    thrust: 1000,              // px/s^2 upward when pressing
-    maxVy: 600,
-    baseSpeed: 300,            // world scroll px/s
-    targetKm: 10000,           // symbolic journey length
-    // thresholds for background zones (km):
-    canadaEnd: 2500,
-    oceanEnd: 9000,
-    spawnEvery: 1.1,           // seconds between spawns baseline
-    obstacleSpeedMin: 280,
-    obstacleSpeedMax: 420,
-    birdChance: .55, cloudChance: .3, gustChance: .15,
-    heartChance: .16,          // hearts to gain shield
-    lives: 3
-  };
+  const cfg = {width:960,height:540,gravity:1400,thrust:1000,maxVy:600,baseSpeed:300,targetKm:10000,lives:3};
+  const state = {dpr:window.devicePixelRatio||1,playing:false,paused:false,t:0,dt:0,dist:0,lives:cfg.lives,ended:false};
 
-  // mutable state
-  const state = {
-    dpr: Math.max(1, Math.min(2, window.devicePixelRatio || 1)),
-    playing: false,
-    paused: false,
-    reduceMotion: false,
-    muted: false,
-    t: 0, dt: 0,
-    lastSpawn: 0,
-    dist: 0,                   // km counter (symbolic)
-    lives: cfg.lives,
-    shield: false,
-    zone: "Canada",
-    ended: false
-  };
+  const canvas=document.getElementById('game'); const ctx=canvas.getContext('2d');
+  function resize(){canvas.width=canvas.clientWidth*state.dpr;canvas.height=canvas.clientHeight*state.dpr;ctx.setTransform(state.dpr,0,0,state.dpr,0,0);}
+  new ResizeObserver(resize).observe(document.getElementById('gameRoot')); resize();
 
-  /* =========================
-     CANVAS SETUP
-  ========================== */
-  const canvas = document.getElementById('game');
-  const root = document.getElementById('gameRoot');
-  const ctx = canvas.getContext('2d');
+  const elLives=document.getElementById('lives'),elKm=document.getElementById('km'),elProg=document.getElementById('progress');
+  const elStart=document.getElementById('start'),elEnd=document.getElementById('end');
+  const playBtn=document.getElementById('playBtn'),replayBtn=document.getElementById('replayBtn');
+  const pauseBtn=document.getElementById('pauseBtn'),muteBtn=document.getElementById('muteBtn');
 
-  function resize() {
-    // Fit canvas to container while keeping internal resolution sharp
-    const rect = root.getBoundingClientRect();
-    canvas.width = rect.width * state.dpr;
-    canvas.height = rect.height * state.dpr;
-    ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
-  }
-  new ResizeObserver(resize).observe(root);
-  resize();
-
-  /* =========================
-     UI ELEMENTS
-  ========================== */
-  const elLives = document.getElementById('lives');
-  const elShield = document.getElementById('shield');
-  const elKm = document.getElementById('km');
-  const elZone = document.getElementById('zone');
-  const elProg = document.getElementById('progress');
-  const elStart = document.getElementById('start');
-  const elEnd = document.getElementById('end');
-  const playBtn = document.getElementById('playBtn');
-  const instrBtn = document.getElementById('instrBtn');
-  const replayBtn = document.getElementById('replayBtn');
-  const pauseBtn = document.getElementById('pauseBtn');
-  const muteBtn = document.getElementById('muteBtn');
-  const rmBtn = document.getElementById('rmBtn');
-  const touchPrompt = document.getElementById('touchPrompt');
-  const scan = document.getElementById('scan');
-
-  function updateHUD(){
-    elLives.textContent = `x${state.lives}`;
-    elShield.textContent = state.shield ? 'ON' : 'off';
-    const remaining = Math.max(0, Math.round(cfg.targetKm - state.dist));
-    elKm.textContent = remaining.toLocaleString();
-    elZone.textContent = state.zone;
-    elProg.style.setProperty('--p', ((state.dist/cfg.targetKm)*100).toFixed(2));
-  }
-
-  /* =========================
-     AUDIO (lightweight, no assets)
-  ========================== */
-  let actx, master, sfxGain, musicGain, seqTimer=null;
-  function initAudio(){
-    if(actx) return;
-    actx = new (window.AudioContext || window.webkitAudioContext)();
-    master = actx.createGain(); master.gain.value = 0.8; master.connect(actx.destination);
-    sfxGain = actx.createGain(); sfxGain.gain.value = 0.8; sfxGain.connect(master);
-    musicGain = actx.createGain(); musicGain.gain.value = 0.12; musicGain.connect(master);
-    if(state.muted) master.gain.value = 0;
-    // Ambient pad (simple two-note loop)
-    const oscA = actx.createOscillator(); const oscB = actx.createOscillator();
-    const fA = actx.createGain(); const fB = actx.createGain();
-    fA.gain.value = 0; fB.gain.value = 0;
-    oscA.type='sine'; oscB.type='triangle';
-    oscA.connect(fA).connect(musicGain); oscB.connect(fB).connect(musicGain);
-    oscA.start(); oscB.start();
-    // chord progression loop
-    const rootHz = 220; // A3
-    const chords = [
-      [rootHz, rootHz*5/4],  // A + C#
-      [rootHz*6/5, rootHz*3/2], // F + E
-      [rootHz*4/3, rootHz*5/3], // D + B
-      [rootHz, rootHz*5/4]
-    ];
-    let ci = 0;
-    function stepChord(){
-      const [a,b] = chords[ci%chords.length];
-      oscA.frequency.setTargetAtTime(a, actx.currentTime, .25);
-      oscB.frequency.setTargetAtTime(b, actx.currentTime, .25);
-      fA.gain.setTargetAtTime(0.6, actx.currentTime, .4);
-      fB.gain.setTargetAtTime(0.5, actx.currentTime, .4);
-      // gentle fade after 5s
-      const off = actx.currentTime + 4.5;
-      fA.gain.setTargetAtTime(0.0, off, .8);
-      fB.gain.setTargetAtTime(0.0, off, .8);
-      ci++;
-    }
-    stepChord();
-    seqTimer = setInterval(stepChord, 6000);
-  }
-  function sfx(freq=800, dur=0.08, type='square', gain=0.25){
-    if(!actx) return;
-    const o = actx.createOscillator(); const g = actx.createGain();
-    o.type = type; o.frequency.value = freq;
-    g.gain.value = gain; o.connect(g).connect(sfxGain);
-    o.start();
-    g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime+dur);
-    o.stop(actx.currentTime+dur);
-  }
-
-  /* =========================
-     INPUT
-  ========================== */
   let pressing=false;
-  function onKey(e){
-    if(e.type==='keydown'){
-      if(e.code==='Space'||e.code==='ArrowUp'){pressing=true; e.preventDefault();}
-      if(e.code==='KeyP'){togglePause()}
-      if(e.code==='KeyM'){toggleMute()}
-    } else {
-      if(e.code==='Space'||e.code==='ArrowUp'){pressing=false; e.preventDefault();}
-    }
+  function handleDown(e){
+    const k=e.code||e.key||'';
+    if(k==='Space'||k==='Spacebar'||k==='ArrowUp'||k==='KeyW'){pressing=true;e.preventDefault();}
+    else if(k==='KeyP'){togglePause();}
+    else if(k==='KeyM'){toggleMute();}
   }
-  window.addEventListener('keydown', onKey);
-  window.addEventListener('keyup', onKey);
-  // touch / mouse
-  const pressStart = ()=>{pressing=true};
-  const pressEnd = ()=>{pressing=false};
-  root.addEventListener('pointerdown', pressStart);
-  root.addEventListener('pointerup', pressEnd);
-  root.addEventListener('pointercancel', pressEnd);
-  root.addEventListener('pointerleave', pressEnd);
-
-  /* =========================
-     ENTITIES
-  ========================== */
-  class Plane {
-    constructor(){
-      this.x = 160; this.y = cfg.height*0.5;
-      this.vy = 0; this.w = 68; this.h = 28;
-      this.blinkT=0;
-    }
-    update(dt){
-      const thrust = pressing ? -cfg.thrust : 0;
-      this.vy += (cfg.gravity + thrust) * dt;
-      this.vy = Math.max(-cfg.maxVy, Math.min(cfg.maxVy, this.vy));
-      this.y += this.vy * dt;
-      // bounds
-      const top=30, bottom=cfg.height-30;
-      if(this.y < top){this.y=top; this.vy=0}
-      if(this.y > bottom){this.y=bottom; this.vy=0}
-      if(this.blinkT>0) this.blinkT -= dt;
-    }
-    hit(){
-      if(state.shield){ state.shield=false; elShield.textContent='off'; sfx(320,.12,'sawtooth',0.28); this.blinkT=0.5; return; }
-      if(state.lives>0){ state.lives--; elLives.textContent=`x${state.lives}`; this.blinkT=0.6; sfx(180,.16,'sawtooth',0.35);}
-      if(state.lives<=0){ endGame(false); }
-    }
-    collectHeart(){
-      state.shield=true; elShield.textContent='ON'; sfx(1200,.12,'triangle',0.3);
-    }
-    rect(){ return {x:this.x-this.w/2, y:this.y-this.h/2, w:this.w, h:this.h}; }
-    draw(ctx){
-      // plane body (stylized mini plane)
-      ctx.save();
-      ctx.translate(this.x, this.y);
-      const alpha = (this.blinkT>0 && Math.floor(this.blinkT*20)%2===0) ? 0.35 : 1;
-      ctx.globalAlpha = alpha;
-      // shadow
-      ctx.fillStyle = 'rgba(0,0,0,.25)';
-      ctx.beginPath(); ctx.ellipse(0, this.h/2+10, this.w*.6, this.h*.25, 0, 0, Math.PI*2); ctx.fill();
-
-      // fuselage
-      roundRect(ctx, -this.w/2, -this.h/2, this.w, this.h, 12);
-      ctx.fillStyle = '#e5e2ff'; ctx.fill();
-      // nose
-      ctx.beginPath(); ctx.moveTo(this.w/2,-this.h/2);
-      ctx.quadraticCurveTo(this.w/2+18,0,this.w/2,-this.h/2+this.h);
-      ctx.closePath(); ctx.fillStyle='#ff7da0'; ctx.fill();
-
-      // wing
-      ctx.fillStyle = '#b084ff';
-      roundRect(ctx, -8, -this.h/2-10, 44, 14, 6); ctx.fill();
-      // tail
-      roundRect(ctx, -this.w/2-6, -this.h/2+6, 16, 18, 4); ctx.fill();
-
-      // little window with mini Aaron glasses
-      ctx.fillStyle = '#2a2451'; roundRect(ctx, 6,-8,18,10,4); ctx.fill();
-      ctx.fillStyle = '#0e0b2b'; ctx.fillRect(9,-6,4,4); ctx.fillRect(18,-6,4,4); // eyes
-      ctx.fillStyle = '#2a2451'; ctx.fillRect(8,-7,16,2); // glasses bar
-
-      // exhaust puff
-      if(!state.reduceMotion){
-        ctx.globalAlpha = .45;
-        ctx.fillStyle = '#ff5a7a';
-        const puffY = Math.sin(state.t*12)*2;
-        ctx.beginPath(); ctx.ellipse(-this.w/2-10, puffY, 8,5,0,0,Math.PI*2); ctx.fill();
-      }
-      ctx.restore();
-    }
+  function handleUp(e){
+    const k=e.code||e.key||'';
+    if(k==='Space'||k==='Spacebar'||k==='ArrowUp'||k==='KeyW'){pressing=false;e.preventDefault();}
   }
+  document.addEventListener('keydown',handleDown,{capture:true});
+  document.addEventListener('keyup',handleUp,{capture:true});
+  // touch
+  const root=document.getElementById('gameRoot');
+  root.addEventListener('pointerdown',()=>pressing=true);
+  root.addEventListener('pointerup',()=>pressing=false);
 
-  class Obstacle {
-    constructor(kind, x, y, speed){
-      this.kind = kind; // 'bird' | 'cloud' | 'gust' | 'heart'
-      this.x = x; this.y = y; this.speed = speed;
-      this.w = (kind==='bird')?42 : (kind==='cloud'?70 : (kind==='gust'?36:26));
-      this.h = (kind==='bird')?26 : (kind==='cloud'?40 : (kind==='gust'?36:26));
-      this.alive = true;
-      this.t=0;
-    }
-    update(dt){ this.t+=dt; this.x -= this.speed*dt; if(this.x < -120) this.alive=false; }
-    rect(){ return {x:this.x-this.w/2, y:this.y-this.h/2, w:this.w, h:this.h}; }
-    draw(ctx){
-      ctx.save(); ctx.translate(this.x, this.y);
-      if(this.kind==='bird'){
-        // body
-        ctx.fillStyle='#ffdede';
-        roundRect(ctx, -18,-9,36,18,8); ctx.fill();
-        // wing flap
-        if(!state.reduceMotion){
-          ctx.save(); ctx.translate(-4,-2);
-          ctx.rotate(Math.sin(this.t*18)*0.25);
-          ctx.fillStyle='#ff7da0'; roundRect(ctx,-8,-3,18,6,3); ctx.fill(); ctx.restore();
-        } else {
-          ctx.fillStyle='#ff7da0'; roundRect(ctx,-12,-3,18,6,3); ctx.fill();
-        }
-        // beak
-        ctx.fillStyle='#ffc23e'; ctx.beginPath(); ctx.moveTo(18,-2); ctx.lineTo(28,0); ctx.lineTo(18,2); ctx.closePath(); ctx.fill();
-        // eye
-        ctx.fillStyle='#2a2451'; ctx.fillRect(8,-2,3,3);
-      } else if(this.kind==='cloud'){
-        ctx.fillStyle='rgba(255,255,255,.8)';
-        blobCloud(ctx, 0,0, this.w, this.h);
-        // occasional lightning
-        if(!state.reduceMotion && Math.random()<0.01){
-          ctx.strokeStyle='#ffe066'; ctx.lineWidth=3; ctx.beginPath();
-          ctx.moveTo(-6,6); ctx.lineTo(6,18); ctx.lineTo(0,18); ctx.lineTo(12,34);
-          ctx.stroke(); sfx(600,.06,'sawtooth',0.12);
-        }
-      } else if(this.kind==='gust'){
-        ctx.save();
-        ctx.globalAlpha=.9;
-        ctx.strokeStyle='#b3a6ff'; ctx.lineWidth=2.5;
-        const amp=6;
-        ctx.beginPath();
-        for(let i=-18;i<=18;i++){
-          const yy = Math.sin((i/6)+this.t*6)*amp;
-          if(i===-18) ctx.moveTo(i,yy);
-          else ctx.lineTo(i,yy);
-        }
-        ctx.stroke(); ctx.restore();
-      } else if(this.kind==='heart'){
-        ctx.save();
-        const bob = state.reduceMotion?0: Math.sin(this.t*6)*2;
-        ctx.translate(0,bob);
-        drawHeart(ctx,0,0,10,'#ff86a8');
-        ctx.restore();
-      }
-      ctx.restore();
-    }
+  class Plane{
+    constructor(){this.x=160;this.y=cfg.height*0.5;this.vy=0;this.w=68;this.h=28;}
+    update(dt){const thrust=pressing?-cfg.thrust:0;this.vy+=(cfg.gravity+thrust)*dt;this.vy=Math.max(-cfg.maxVy,Math.min(cfg.maxVy,this.vy));this.y+=this.vy*dt;if(this.y<30){this.y=30;this.vy=0}if(this.y>cfg.height-30){this.y=cfg.height-30;this.vy=0}}
+    draw(ctx){ctx.save();ctx.translate(this.x,this.y);ctx.fillStyle='#e5e2ff';ctx.fillRect(-this.w/2,-this.h/2,this.w,this.h);ctx.restore();}
   }
+  const plane=new Plane();
 
-  /* =========================
-     HELPERS
-  ========================== */
-  function roundRect(ctx,x,y,w,h,r){
-    const rr=Math.min(r,w/2,h/2);
-    ctx.beginPath();
-    ctx.moveTo(x+rr,y);
-    ctx.arcTo(x+w,y,x+w,y+h,rr);
-    ctx.arcTo(x+w,y+h,x,y+h,rr);
-    ctx.arcTo(x,y+h,x,y,rr);
-    ctx.arcTo(x,y,x+w,y,rr);
-    ctx.closePath();
-  }
-  function blobCloud(ctx,x,y,w,h){
-    ctx.beginPath();
-    ctx.ellipse(x-w*0.15,y, w*0.35,h*0.46,0,0,Math.PI*2);
-    ctx.ellipse(x+w*0.05,y-h*0.06, w*0.42,h*0.52,0,0,Math.PI*2);
-    ctx.ellipse(x+w*0.3,y, w*0.48,h*0.5,0,0,Math.PI*2);
-    ctx.fill();
-  }
-  function drawHeart(ctx,x,y,r,fill){
-    ctx.save(); ctx.translate(x,y); ctx.fillStyle=fill;
-    ctx.beginPath();
-    ctx.moveTo(0, r);
-    ctx.bezierCurveTo(r, r, r, 0, 0, -r/2);
-    ctx.bezierCurveTo(-r, 0, -r, r, 0, r);
-    ctx.fill(); ctx.restore();
-  }
-  function rectsOverlap(a,b){
-    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
-  }
+  function updateHUD(){elLives.textContent=`x${state.lives}`;elKm.textContent=(cfg.targetKm-Math.floor(state.dist)).toLocaleString();elProg.style.setProperty('--p',(state.dist/cfg.targetKm*100).toFixed(2));}
 
-  /* =========================
-     BACKGROUND / WORLD
-  ========================== */
-  const plane = new Plane();
-  const obstacles = [];
-
-  let bgOffset = 0; // scroll
-
-  function zoneFor(dist){
-    if(dist < cfg.canadaEnd) return 'Canada';
-    if(dist < cfg.oceanEnd) return 'Ocean';
-    return 'Bangladesh';
-  }
-
-  function spawnObstacle(){
-    const H = cfg.height; const W = cfg.width;
-    const r = Math.random();
-    const kind = (r < cfg.birdChance) ? 'bird' : (r < cfg.birdChance + cfg.cloudChance ? 'cloud' : (r < cfg.birdChance+cfg.cloudChance+cfg.gustChance ? 'gust' : 'heart'));
-    const y = 60 + Math.random()*(H-120);
-    const speed = cfg.obstacleSpeedMin + Math.random()*(cfg.obstacleSpeedMax-cfg.obstacleSpeedMin);
-    const x = cfg.width + 120;
-    obstacles.push(new Obstacle(kind,x,y,speed));
-  }
-
-  function drawBackground(dt){
-    // Parallax sky gradient by zone
-    const z = state.zone;
-    const grd = ctx.createLinearGradient(0,0,0,cfg.height);
-    if(z==='Canada'){ grd.addColorStop(0,'#2a1b4d'); grd.addColorStop(1,'#111026'); }
-    else if(z==='Ocean'){ grd.addColorStop(0,'#1f184a'); grd.addColorStop(1,'#0a0f2a'); }
-    else { grd.addColorStop(0,'#29123f'); grd.addColorStop(1,'#120a1d'); }
-    ctx.fillStyle = grd; ctx.fillRect(0,0,cfg.width,cfg.height);
-
-    // Stars (reduced if reduceMotion)
-    if(!state.reduceMotion){
-      ctx.globalAlpha=.5;
-      for(let i=0;i<40;i++){
-        const x = (i*128 + (state.t*10)%128) % cfg.width;
-        const y = (i*37)%cfg.height;
-        ctx.fillStyle = i%7===0? '#ffd7f0':'#d7d0ff';
-        ctx.fillRect(x,y,2,2);
-      }
-      ctx.globalAlpha=1;
-    }
-
-    // Parallax silhouettes
-    bgOffset += (cfg.baseSpeed*dt);
-    const slow = (bgOffset*0.2) % (cfg.width*2);
-    const mid  = (bgOffset*0.45) % (cfg.width*2);
-    const fast = (bgOffset*0.75) % (cfg.width*2);
-
-    if(z==='Canada'){
-      // Distant mountains / skyline
-      ctx.fillStyle='#3a2a6a';
-      drawHills(-slow, cfg.height-140, 0.9);
-      drawHills(cfg.width*2 - slow, cfg.height-140, 0.9);
-      ctx.fillStyle='#4c3a86';
-      drawHills(-mid, cfg.height-120, 1);
-      drawHills(cfg.width*2 - mid, cfg.height-120, 1);
-      ctx.fillStyle='#6b4bb0';
-      drawHills(-fast, cfg.height-100, 1.1);
-      drawHills(cfg.width*2 - fast, cfg.height-100, 1.1);
-      // little maple sparkles
-      if(!state.reduceMotion){
-        ctx.globalAlpha=.3;
-        for(let i=0;i<8;i++){
-          ctx.fillStyle='#ff8fb0';
-          ctx.beginPath(); ctx.arc((i*140 + cfg.width - (bgOffset%cfg.width)), cfg.height-160 - (i%3)*24, 2.5,0,Math.PI*2); ctx.fill();
-        }
-        ctx.globalAlpha=1;
-      }
-    } else if(z==='Ocean'){
-      // waves
-      const base = cfg.height-90;
-      for(let layer=0; layer<3; layer++){
-        const amp = 6+layer*4, step=14-layer*2, yy = base + layer*14;
-        ctx.strokeStyle = ['#2b1f58','#3a2a6f','#4b3a8a'][layer];
-        ctx.lineWidth=2;
-        ctx.beginPath();
-        for(let x=-20;x<cfg.width+20;x++){
-          const y = yy + Math.sin((x+state.t*80*(0.4+layer*0.15))/ (step)) * amp;
-          if(x===-20) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-        }
-        ctx.stroke();
-      }
-    } else {
-      // Bangladesh skyline silhouette
-      const base = cfg.height-100;
-      ctx.fillStyle='#5a3a9a';
-      drawSkyline(-mid, base);
-      drawSkyline(cfg.width*2-mid, base);
-      ctx.fillStyle='#7b4fc9';
-      drawSkyline(-fast, base+8, 0.9);
-      drawSkyline(cfg.width*2-fast, base+8, 0.9);
-      // ambient lantern dots
-      if(!state.reduceMotion){
-        ctx.globalAlpha=.35;
-        for(let i=0;i<10;i++){
-          ctx.fillStyle='#ffb3c7';
-          ctx.fillRect((i*90 + (bgOffset*0.3)%cfg.width)-20, base-30 - (i%3)*16, 2,2);
-        }
-        ctx.globalAlpha=1;
-      }
-    }
-  }
-  function drawHills(offsetY, baseY, scale=1){
-    ctx.beginPath();
-    ctx.moveTo(-200-offsetY, baseY);
-    for(let i=0;i<=6;i++){
-      const x = i*(cfg.width/6)-offsetY;
-      const y = baseY - Math.sin(i*1.2)*24*scale - 18;
-      ctx.lineTo(x,y);
-    }
-    ctx.lineTo(cfg.width*2-offsetY, baseY);
-    ctx.closePath(); ctx.fill();
-  }
-  function drawSkyline(offsetX, baseY, s=1){
-    const w = cfg.width*2;
-    const units = [
-      [40,30],[30,26],[24,22],[50,32],[34,27],[24,22],[44,36],[28,24],[26,22],[36,30]
-    ];
-    let x=-20-offsetX;
-    for(let i=0;i<units.length;i++){
-      const [bw, bh]=units[i];
-      const h = bh*s;
-      ctx.fillRect(x, baseY-h, bw, h);
-      // dome/minaret touch
-      ctx.beginPath();
-      ctx.moveTo(x+bw*0.5, baseY-h);
-      ctx.quadraticCurveTo(x+bw*0.5, baseY-h-10*s, x+bw*0.2, baseY-h);
-      ctx.quadraticCurveTo(x+bw*0.5, baseY-h-16*s, x+bw*0.8, baseY-h);
-      ctx.fill();
-      x += bw + 18;
-    }
-    ctx.fillRect(-20-offsetX, baseY, w, 14);
-  }
-
-  /* =========================
-     GAME LOOP
-  ========================== */
-  let last = performance.now();
+  let last=performance.now();
   function loop(now){
-    const rawDt = Math.min(0.033, (now-last)/1000);
-    last = now;
-    if(state.paused || !state.playing){ requestAnimationFrame(loop); return; }
-
-    state.dt = rawDt;
-    state.t += rawDt;
-
-    // progress
-    const speed = cfg.baseSpeed/3.5; // convert px/s to "km/s" feel
-    state.dist = Math.min(cfg.targetKm, state.dist + speed*rawDt);
-    const newZone = zoneFor(state.dist);
-    if(newZone !== state.zone){ state.zone = newZone; updateHUD(); }
-
-    // update
-    plane.update(rawDt);
-    for(const ob of obstacles){ ob.update(rawDt); }
-
-    // collisions & collections
-    const pr = plane.rect();
-    for(const ob of obstacles){
-      if(!ob.alive) continue;
-      if(ob.kind==='heart'){
-        if(rectsOverlap(pr, ob.rect())){ plane.collectHeart(); ob.alive=false; }
-      } else {
-        if(rectsOverlap(pr, ob.rect())){
-          plane.hit(); ob.alive=false;
-        }
-      }
-    }
-
-    // cull
-    for(let i=obstacles.length-1;i>=0;i--) if(!obstacles[i].alive) obstacles.splice(i,1);
-
-    // spawn logic
-    state.lastSpawn += rawDt;
-    const interval = Math.max(0.6, cfg.spawnEvery - (state.dist/cfg.targetKm)*0.5); // a bit busier over time
-    if(state.lastSpawn > interval){
-      spawnObstacle(); state.lastSpawn = 0;
-    }
-
-    // draw
-    drawBackground(rawDt);
+    const dt=Math.min(0.033,(now-last)/1000);last=now;
+    if(state.paused||!state.playing){requestAnimationFrame(loop);return;}
+    state.t+=dt; plane.update(dt); state.dist=Math.min(cfg.targetKm,state.dist+(cfg.baseSpeed/3.5)*dt);
+    ctx.fillStyle='#120a1d';ctx.fillRect(0,0,cfg.width,cfg.height);
     plane.draw(ctx);
-    for(const ob of obstacles){ ob.draw(ctx); }
-
-    // win condition
-    if(state.dist >= cfg.targetKm && !state.ended){
-      landAndFinish();
-    }
-
+    updateHUD();
+    if(state.dist>=cfg.targetKm&&!state.ended){state.ended=true;endGame(true);}
     requestAnimationFrame(loop);
   }
 
-  function landAndFinish(){
-    state.ended = true;
-    // brief auto-landing animation then show end screen
-    let t=0;
-    const startY = plane.y;
-    function anim(){
-      t+=0.016;
-      drawBackground(0);
-      // glide to bottom center
-      plane.x += (cfg.width*0.6 - plane.x)*0.08;
-      plane.y = startY + (cfg.height-90 - startY)*Math.min(1,t/1.2);
-      plane.draw(ctx);
-      if(t<1.2) requestAnimationFrame(anim);
-      else endGame(true);
-    }
-    anim();
-  }
+  function startGame(){state.playing=true;state.paused=false;state.t=0;state.dist=0;state.lives=cfg.lives;state.ended=false;elStart.classList.add('hidden');elEnd.classList.add('hidden');canvas.focus();requestAnimationFrame(n=>{last=n;requestAnimationFrame(loop);});}
+  function endGame(won){state.playing=false;if(won){elEnd.classList.remove('hidden');}else{elStart.classList.remove('hidden');}}
+  function togglePause(){if(!state.playing)return;state.paused=!state.paused;pauseBtn.textContent=state.paused?'▶️':'⏸️';}
+  function toggleMute(){/* stub: add audio later */muteBtn.textContent= muteBtn.textContent==='🔊'?'🔇':'🔊';}
 
-  function startGame(){
-    // reset
-    state.playing = true; state.paused=false; state.reduceMotion = state.reduceMotion;
-    state.t=0; state.dt=0; state.lastSpawn=0; state.dist=0; state.lives=cfg.lives; state.shield=false; state.zone='Canada'; state.ended=false;
-    obstacles.length=0; pressing=false; updateHUD();
-    elStart.classList.add('hidden'); elEnd.classList.add('hidden');
-    touchPrompt.style.display = isTouch()? 'block':'none';
-    requestAnimationFrame((n)=>{ last=n; requestAnimationFrame(loop); });
-    initAudio();
-  }
-
-  function endGame(won){
-    state.playing=false;
-    if(won){
-      elEnd.classList.remove('hidden');
-      sfx(1200,.12,'triangle',0.35);
-      sfx(1500,.18,'square',0.25);
-    }else{
-      // soft fade & restart prompt
-      elStart.querySelector('.title').textContent = 'One more try? You’ve got this!';
-      elStart.classList.remove('hidden');
-    }
-  }
-
-  function togglePause(){
-    if(!state.playing) return;
-    state.paused = !state.paused;
-    pauseBtn.textContent = state.paused ? '▶️' : '⏸️';
-  }
-  function toggleMute(){
-    state.muted = !state.muted;
-    muteBtn.textContent = state.muted ? '🔇' : '🔊';
-    if(master) master.gain.value = state.muted ? 0 : 0.8;
-  }
-
-  function isTouch(){ return 'ontouchstart' in window || navigator.maxTouchPoints>0; }
-  function setReduceMotion(val){
-    state.reduceMotion = val;
-    rmBtn.textContent = val ? '🧘 Motion: low' : '🧘 Reduce motion';
-    scan.style.opacity = val ? .15 : .6;
-  }
-
-  /* =========================
-     WIRE UI
-  ========================== */
-  playBtn.addEventListener('click', ()=>{ startGame(); sfx(900,.08,'square',0.2); });
-  instrBtn.addEventListener('click', ()=>{
-    alert('How to play:\n• Hold Space / ↑ or TAP & HOLD to ascend.\n• Release to glide.\n• Dodge birds, clouds, and wind gusts.\n• Collect hearts for a one-hit shield.\n• Reach Bangladesh to land and hug Zarifa!');
-  });
-  replayBtn.addEventListener('click', ()=>{ elEnd.classList.add('hidden'); startGame(); });
-
-  pauseBtn.addEventListener('click', togglePause);
-  muteBtn.addEventListener('click', toggleMute);
-  rmBtn.addEventListener('click', ()=> setReduceMotion(!state.reduceMotion));
-
-  // Start with reduced motion preference from OS if available
-  const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-  setReduceMotion(mq.matches);
-  mq.addEventListener?.('change', e=> setReduceMotion(e.matches));
-
-  // Click/keydown on start to unlock audio
-  elStart.addEventListener('pointerdown', initAudio);
-  window.addEventListener('keydown', (e)=>{ if(e.code==='Space' && elStart && !state.playing){ initAudio(); } });
-
-  // Initial HUD fill
+  playBtn.onclick=()=>startGame();
+  replayBtn.onclick=()=>{elEnd.classList.add('hidden');startGame();}
   updateHUD();
-
 })();
 </script>
 </body>
