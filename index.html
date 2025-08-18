@@ -6,165 +6,339 @@
 <title>Mini Aaron: Flight to Zarifa</title>
 <style>
   :root{--bg-1:#0f0620;--bg-2:#1b0a38;--accent:#ff5a7a;--accent-2:#b084ff;}
-  html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg-1),var(--bg-2));color:#fff;font-family:system-ui;}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg-1),var(--bg-2));color:#fff;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;}
   #gameRoot{position:relative;max-width:960px;margin:0 auto;height:100vh;overflow:hidden;}
   canvas{display:block;width:100%;height:100%}
+
   .hud{position:absolute;top:12px;left:12px;display:flex;gap:10px;z-index:5}
   .pill{background:rgba(0,0,0,.35);padding:8px 12px;border-radius:999px}
   .hud-right{position:absolute;top:12px;right:12px;display:flex;gap:10px;z-index:6}
+  .btn{cursor:pointer;user-select:none}
   .bar{--p:0;position:relative;height:10px;width:200px;border-radius:999px;background:rgba(255,255,255,.15);overflow:hidden}
   .bar::after{content:"";position:absolute;inset:0;width:calc(var(--p)*1%);background:linear-gradient(90deg,var(--accent),var(--accent-2))}
   .rec{position:absolute;top:14px;right:14px;color:#ff4d4d;font-weight:800;text-shadow:0 0 10px #ff4d4d80}
   .rec::before{content:"● "; }
-  .overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,0,20,.8);z-index:10;transition:opacity .3s}
+
+  .overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,0,20,.8);z-index:10;transition:opacity .25s}
   .overlay.hidden{opacity:0;pointer-events:none}
-  .card{background:rgba(255,255,255,.06);padding:28px;border-radius:16px;text-align:center}
+  .card{background:rgba(255,255,255,.06);padding:28px;border-radius:16px;text-align:center;border:1px solid rgba(255,255,255,.15)}
   .action{border:none;padding:12px 18px;border-radius:12px;font-weight:800;cursor:pointer;background:linear-gradient(180deg,var(--accent),#ff87a0);color:#fff}
-  /* onscreen helper button (for trackpad hold) */
-  .holdZone{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:7;
-            background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(6px);
-            padding:10px 16px;border-radius:999px;user-select:none}
+
+  .holdZone{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:7;background:rgba(255,255,255,.08);
+            border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(6px);padding:10px 16px;border-radius:999px;user-select:none}
+  .hint{opacity:.8;font-size:12px;margin-top:6px}
 </style>
 </head>
 <body>
 <div id="gameRoot">
-  <canvas id="game" tabindex="0"></canvas>
+  <canvas id="game" tabindex="0" aria-label="Mini Aaron Flight Game"></canvas>
 
   <div class="hud">
-    <div class="pill">❤️ <span id="lives">x3</span></div>
+    <div class="pill" id="livesPill">❤️❤️❤️</div>
     <div class="pill">✈️ Dist: <span id="km">10,000</span></div>
     <div class="pill bar" id="progress"></div>
   </div>
   <div class="hud-right">
-    <div class="pill btn" id="pauseBtn">⏸️</div>
-    <div class="pill btn" id="muteBtn">🔊</div>
+    <div class="pill btn" id="pauseBtn" title="Pause/Resume">⏸️</div>
+    <div class="pill btn" id="muteBtn" title="Mute/Unmute">🔊</div>
   </div>
   <div class="rec">REC</div>
 
-  <div class="holdZone" id="holdZone">Hold here (or anywhere) to fly ↑ · Space / ↑ / W also work</div>
+  <div class="holdZone" id="holdZone">Hold to fly ↑ • Space / ↑ / W also work</div>
 
-  <!-- Start screen -->
+  <!-- Start -->
   <div class="overlay" id="start">
     <div class="card">
-      <h1>The Flight to Zarifa ✈️💜</h1>
-      <p>MacBook friendly: <b>hold trackpad</b> anywhere to go up • or hold <b>Space / ↑ / W</b>.</p>
+      <h1 style="margin:0 0 8px">The Flight to Zarifa ✈️💜</h1>
+      <p style="margin:0">Hold <b>Space / ↑ / W</b> or <b>hold trackpad</b> to go up. Dodge obstacles.</p>
+      <p class="hint">You have <b>3 lives</b>. Each hit loses one heart. At 0 → <b>Game Over</b> (press Space/Enter to restart).</p>
       <button class="action" id="playBtn">🎬 Fly!</button>
     </div>
   </div>
 
-  <!-- End screen -->
-  <div class="overlay hidden" id="end">
+  <!-- Game Over -->
+  <div class="overlay hidden" id="gameover">
     <div class="card">
-      <h2>Mini Aaron & Zarifa Hug 💖</h2>
-      <button class="action" id="replayBtn">↻ Play again</button>
+      <h2 style="margin:0 0 8px">Game Over 💔</h2>
+      <p style="margin:0 0 12px">Press <b>Space</b> or <b>Enter</b> — or click — to try again.</p>
+      <button class="action" id="retryBtn">↻ Restart</button>
+    </div>
+  </div>
+
+  <!-- Win -->
+  <div class="overlay hidden" id="win">
+    <div class="card">
+      <h2 style="margin:0 0 8px">Landed in Bangladesh — Hug time 💖</h2>
+      <button class="action" id="againBtn">↻ Play again</button>
     </div>
   </div>
 </div>
 
 <script>
 (() => {
-  const cfg = {width:960,height:540,gravity:1400,thrust:2400,maxVy:800,baseSpeed:300,targetKm:10000,lives:3};
-  const state = {dpr:Math.min(2,window.devicePixelRatio||1),playing:false,paused:false,t:0,dt:0,dist:0,lives:cfg.lives,ended:false};
+  /* ===== Config ===== */
+  const cfg = {
+    width:960, height:540,
+    gravity:1400, thrust:2400, maxVy:800,
+    baseSpeed:300, targetKm:10000,
+    livesStart:3,
+    spawnBase:1.05, obsSpeedMin:280, obsSpeedMax:420
+  };
 
+  /* ===== State ===== */
+  const state = {
+    dpr:Math.min(2,window.devicePixelRatio||1),
+    mode:'start',      // 'start' | 'playing' | 'gameover' | 'win'
+    t:0, dist:0, lastSpawn:0,
+    lives:cfg.livesStart, muted:false, paused:false
+  };
+
+  /* ===== Canvas ===== */
   const root = document.getElementById('gameRoot');
-  const canvas = document.getElementById('game'); const ctx = canvas.getContext('2d');
-  function resize(){canvas.width=canvas.clientWidth*state.dpr;canvas.height=canvas.clientHeight*state.dpr;ctx.setTransform(state.dpr,0,0,state.dpr,0,0);}
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  function resize(){
+    canvas.width = canvas.clientWidth * state.dpr;
+    canvas.height = canvas.clientHeight * state.dpr;
+    ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
+  }
   new ResizeObserver(resize).observe(root); resize();
 
-  const elLives=document.getElementById('lives'), elKm=document.getElementById('km'), elProg=document.getElementById('progress');
-  const elStart=document.getElementById('start'), elEnd=document.getElementById('end');
-  const playBtn=document.getElementById('playBtn'), replayBtn=document.getElementById('replayBtn');
-  const pauseBtn=document.getElementById('pauseBtn'), muteBtn=document.getElementById('muteBtn');
-  const holdZone=document.getElementById('holdZone');
+  /* ===== UI ===== */
+  const elLives = document.getElementById('livesPill');
+  const elKm = document.getElementById('km');
+  const elProg = document.getElementById('progress');
+  const elStart = document.getElementById('start');
+  const elGameOver = document.getElementById('gameover');
+  const elWin = document.getElementById('win');
+  const playBtn = document.getElementById('playBtn');
+  const retryBtn = document.getElementById('retryBtn');
+  const againBtn = document.getElementById('againBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const muteBtn = document.getElementById('muteBtn');
 
-  /* ========= INPUT (MacBook-proof) ========= */
-  let pressing = false;
-
-  function isFlyKey(e){
-    const c = e.code, k = e.key;
-    return c==="Space"||c==="Spacebar"||c==="ArrowUp"||c==="KeyW"||k===" "||k==="w"||k==="W";
+  function updateHUD(){
+    // render hearts like ❤️❤️❤️
+    elLives.textContent = '❤️'.repeat(state.lives) + '🤍'.repeat(Math.max(0, cfg.livesStart - state.lives));
+    elKm.textContent = Math.max(0, cfg.targetKm - Math.floor(state.dist)).toLocaleString();
+    elProg.style.setProperty('--p', (state.dist/cfg.targetKm*100).toFixed(2));
   }
+
+  /* ===== Audio (tiny, built-in) ===== */
+  let actx, master, sfxGain, musicGain, oscA, oscB, chordTimer=null;
+  function initAudio(){
+    if(actx) return;
+    actx = new (window.AudioContext||window.webkitAudioContext)();
+    master = actx.createGain(); master.connect(actx.destination); master.gain.value = state.muted ? 0 : .8;
+    sfxGain = actx.createGain(); sfxGain.connect(master); sfxGain.gain.value = .8;
+    musicGain = actx.createGain(); musicGain.connect(master); musicGain.gain.value = .12;
+
+    oscA = actx.createOscillator(); oscB = actx.createOscillator();
+    const gA = actx.createGain(), gB = actx.createGain(); gA.gain.value=0; gB.gain.value=0;
+    oscA.type='sine'; oscB.type='triangle';
+    oscA.connect(gA).connect(musicGain); oscB.connect(gB).connect(musicGain);
+    oscA.start(); oscB.start();
+
+    const chords = [[220,275],[176,330],[293,247],[220,275]];
+    let i=0; function tick(){
+      const [a,b]=chords[i%chords.length]; i++;
+      oscA.frequency.setTargetAtTime(a,actx.currentTime,.2);
+      oscB.frequency.setTargetAtTime(b,actx.currentTime,.2);
+      gA.gain.setTargetAtTime(.5,actx.currentTime,.4);
+      gB.gain.setTargetAtTime(.45,actx.currentTime,.4);
+      const off=actx.currentTime+4.5;
+      gA.gain.setTargetAtTime(0,off,.8);
+      gB.gain.setTargetAtTime(0,off,.8);
+    }
+    tick(); chordTimer=setInterval(tick,6000);
+  }
+  function sfx(freq=900, dur=.08, type='square', gain=.25){
+    if(!actx) return;
+    const o=actx.createOscillator(); const g=actx.createGain();
+    o.type=type; o.frequency.value=freq; g.gain.value=gain;
+    o.connect(g).connect(sfxGain); o.start();
+    g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime+dur);
+    o.stop(actx.currentTime+dur);
+  }
+  function toggleMute(){
+    state.muted=!state.muted;
+    muteBtn.textContent = state.muted ? '🔇' : '🔊';
+    if(master) master.gain.value = state.muted ? 0 : .8;
+  }
+
+  /* ===== Input (MacBook-proof) ===== */
+  let pressing=false;
+  function isFlyKey(e){const c=e.code,k=e.key;return c==="Space"||c==="Spacebar"||c==="ArrowUp"||c==="KeyW"||k===" "||k==="w"||k==="W";}
+  function isRestartKey(e){const c=e.code,k=e.key;return c==="Space"||c==="Enter"||k===" "||k==="Enter";}
   function down(e){
-    if(isFlyKey(e)){ pressing=true; e.preventDefault(); }
-    if(e.code==="KeyP") togglePause();
-    if(e.code==="KeyM") toggleMute();
+    if(state.mode==='playing'){
+      if(isFlyKey(e)){ pressing=true; e.preventDefault(); }
+      if(e.code==="KeyP"){ togglePause(); }
+      if(e.code==="KeyM"){ toggleMute(); }
+    }else{
+      if(isRestartKey(e)){ e.preventDefault(); startGame(); }
+    }
   }
-  function up(e){
-    if(isFlyKey(e)){ pressing=false; e.preventDefault(); }
-  }
+  function up(e){ if(isFlyKey(e)){ pressing=false; e.preventDefault(); } }
 
-  // listen at window level, capture phase; include keypress to catch Safari space quirks
-  window.addEventListener('keydown', down, true);
-  window.addEventListener('keyup', up, true);
-  window.addEventListener('keypress', (e)=>{ if(isFlyKey(e)) e.preventDefault(); }, true);
+  window.addEventListener('keydown',down,true);
+  window.addEventListener('keyup',up,true);
+  window.addEventListener('keypress',e=>{ if(isFlyKey(e)||isRestartKey(e)) e.preventDefault(); },true);
 
-  // pointer (trackpad/mouse) anywhere on the game
-  const pressStart=()=>{ pressing=true; };
+  // pointer (trackpad/mouse/touch)
+  const pressStart=()=>{ if(state.mode!=='playing') return; pressing=true; };
   const pressEnd = ()=>{ pressing=false; };
   ['pointerdown','mousedown','touchstart'].forEach(t=> root.addEventListener(t, pressStart, {passive:false}));
   ['pointerup','pointercancel','pointerleave','mouseup','touchend'].forEach(t=> root.addEventListener(t, pressEnd, {passive:false}));
+  root.addEventListener('click', ()=>{ if(state.mode!=='playing') startGame(); });
+  window.addEventListener('blur',()=>pressing=false);
+  document.addEventListener('visibilitychange',()=>{ if(document.hidden) pressing=false; });
 
-  /* ========= PLANE ========= */
+  /* ===== Entities ===== */
   class Plane{
-    constructor(){ this.x=160; this.y=cfg.height*0.6; this.vy=0; this.w=68; this.h=28; }
+    constructor(){ this.x=160; this.y=cfg.height*0.6; this.vy=0; this.w=68; this.h=28; this.blink=0; }
     update(dt){
-      const accel = cfg.gravity - (pressing ? cfg.thrust : 0); // press = go up
+      const accel = cfg.gravity - (pressing ? cfg.thrust : 0);
       this.vy += accel * dt;
       this.vy = Math.max(-cfg.maxVy, Math.min(cfg.maxVy, this.vy));
       this.y  += this.vy * dt;
       if(this.y<30){ this.y=30; this.vy=0; }
       if(this.y>cfg.height-30){ this.y=cfg.height-30; this.vy=0; }
+      if(this.blink>0) this.blink -= dt;
     }
+    rect(){ return {x:this.x-this.w/2,y:this.y-this.h/2,w:this.w,h:this.h}; }
     draw(ctx){
       ctx.save(); ctx.translate(this.x,this.y);
-      // simple visible block (swap for your fancy plane later)
+      ctx.globalAlpha = (this.blink>0 && Math.floor(this.blink*20)%2===0) ? 0.35 : 1;
       ctx.fillStyle='#e5e2ff'; ctx.fillRect(-this.w/2,-this.h/2,this.w,this.h);
+      ctx.fillStyle='#b084ff'; ctx.fillRect(-8,-this.h/2-10,44,12);
+      ctx.fillStyle='#ff7da0'; ctx.fillRect(this.w/2-8,-this.h/2,8,this.h);
+      ctx.restore();
+    }
+    takeHit(){
+      if(state.lives>0){
+        state.lives--;
+        updateHUD();
+        this.blink = .6;
+        sfx(180,.16,'sawtooth',.35);
+        if(state.lives<=0){ gameOver(); }
+      }
+    }
+  }
+
+  class Obstacle{
+    constructor(kind,x,y,speed){ this.kind=kind; this.x=x; this.y=y; this.speed=speed; this.alive=true; this.t=0;
+      this.w= kind==='bird'?42 : kind==='cloud'?70 : 36;
+      this.h= kind==='bird'?26 : kind==='cloud'?40 : 36; }
+    rect(){ return {x:this.x-this.w/2,y:this.y-this.h/2,w:this.w,h:this.h}; }
+    update(dt){ this.t+=dt; this.x -= this.speed*dt; if(this.x<-100) this.alive=false; }
+    draw(ctx){
+      ctx.save(); ctx.translate(this.x,this.y);
+      if(this.kind==='bird'){
+        ctx.fillStyle='#ffdede'; rrect(ctx,-18,-9,36,18,8); ctx.fill();
+        ctx.fillStyle='#ff7da0'; rrect(ctx,-10,-3,18,6,3); ctx.fill();
+        ctx.fillStyle='#2a2451'; ctx.fillRect(8,-2,3,3);
+        ctx.fillStyle='#ffc23e'; ctx.beginPath(); ctx.moveTo(18,-2); ctx.lineTo(28,0); ctx.lineTo(18,2); ctx.fill();
+      } else if(this.kind==='cloud'){
+        ctx.fillStyle='rgba(255,255,255,.85)'; cloud(ctx,0,0,this.w,this.h); ctx.fill();
+      } else { // gust
+        ctx.strokeStyle='#b3a6ff'; ctx.lineWidth=2.5; ctx.beginPath();
+        for(let i=-18;i<=18;i++){ const yy=Math.sin((i/6)+this.t*6)*6; if(i===-18) ctx.moveTo(i,yy); else ctx.lineTo(i,yy); }
+        ctx.stroke();
+      }
       ctx.restore();
     }
   }
-  const plane = new Plane();
 
-  function updateHUD(){
-    elLives.textContent = `x${state.lives}`;
-    elKm.textContent = (cfg.targetKm - Math.floor(state.dist)).toLocaleString();
-    elProg.style.setProperty('--p', (state.dist/cfg.targetKm*100).toFixed(2));
+  function rrect(ctx,x,y,w,h,r){const rr=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+rr,y);ctx.arcTo(x+w,y,x+w,y+h,rr);ctx.arcTo(x+w,y+h,x,y+h,rr);ctx.arcTo(x,y+h,x,y,rr);ctx.arcTo(x,y,x+w,y,rr);ctx.closePath();}
+  function cloud(ctx,x,y,w,h){ctx.beginPath();ctx.ellipse(x-w*.15,y,w*.35,h*.46,0,0,Math.PI*2);ctx.ellipse(x+w*.05,y-h*.06,w*.42,h*.52,0,0,Math.PI*2);ctx.ellipse(x+w*.3,y,w*.48,h*.5,0,0,Math.PI*2);}
+  function overlap(a,b){return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y;}
+
+  const plane = new Plane();
+  const obstacles = [];
+
+  function spawnObstacle(){
+    const r = Math.random();
+    const kind = r<.55?'bird' : r<.85?'cloud' : 'gust';
+    const y = 60 + Math.random()*(cfg.height-120);
+    const speed = cfg.obsSpeedMin + Math.random()*(cfg.obsSpeedMax-cfg.obsSpeedMin);
+    obstacles.push(new Obstacle(kind, cfg.width+100, y, speed));
   }
 
-  /* ========= LOOP ========= */
+  /* ===== Loop ===== */
   let last=performance.now();
   function loop(now){
     const dt=Math.min(0.033,(now-last)/1000); last=now;
-    if(state.paused||!state.playing){ requestAnimationFrame(loop); return; }
-    state.t+=dt;
-    plane.update(dt);
+
+    if(state.mode!=='playing'){ requestAnimationFrame(loop); return; }
+    if(state.paused){ requestAnimationFrame(loop); return; }
+
+    state.t+=dt; state.lastSpawn+=dt;
+
+    // progress & spawns
     state.dist = Math.min(cfg.targetKm, state.dist + (cfg.baseSpeed/3.5)*dt);
+    const interval = Math.max(0.6, cfg.spawnBase - (state.dist/cfg.targetKm)*0.4);
+    if(state.lastSpawn>interval){ spawnObstacle(); state.lastSpawn=0; }
+
+    // update
+    plane.update(dt);
+    for(const ob of obstacles) ob.update(dt);
+
+    // collisions → lose 1 life per hit
+    const pr = plane.rect();
+    for(const ob of obstacles){
+      if(!ob.alive) continue;
+      if(overlap(pr, ob.rect())){
+        ob.alive=false;
+        plane.takeHit();
+        break; // one hit per frame
+      }
+    }
+
+    // cull
+    for(let i=obstacles.length-1;i>=0;i--) if(!obstacles[i].alive) obstacles.splice(i,1);
+
+    // draw
     ctx.fillStyle='#120a1d'; ctx.fillRect(0,0,cfg.width,cfg.height);
     plane.draw(ctx);
+    for(const ob of obstacles) ob.draw(ctx);
     updateHUD();
-    if(state.dist>=cfg.targetKm && !state.ended){ state.ended=true; endGame(true); }
+
+    // win
+    if(state.dist>=cfg.targetKm){ return win(); }
+
     requestAnimationFrame(loop);
   }
 
-  /* ========= CONTROL ========= */
+  /* ===== Controls / States ===== */
   function startGame(){
-    state.playing=true; state.paused=false; state.t=0; state.dist=0; state.lives=cfg.lives; state.ended=false;
-    elStart.classList.add('hidden'); elEnd.classList.add('hidden');
-    window.focus(); canvas.focus();
+    state.mode='playing'; state.paused=false; state.t=0; state.dist=0; state.lastSpawn=0; state.lives=cfg.livesStart;
+    obstacles.length=0; pressing=false; updateHUD();
+    elStart.classList.add('hidden'); elGameOver.classList.add('hidden'); elWin.classList.add('hidden');
+    window.focus(); canvas.focus(); initAudio();
     requestAnimationFrame(n=>{ last=n; requestAnimationFrame(loop); });
   }
-  function endGame(won){
-    state.playing=false;
-    if(won){ elEnd.classList.remove('hidden'); } else { elStart.classList.remove('hidden'); }
+  function gameOver(){
+    state.mode='gameover';
+    elGameOver.classList.remove('hidden');
   }
-  function togglePause(){ if(!state.playing) return; state.paused=!state.paused; pauseBtn.textContent=state.paused?'▶️':'⏸️'; }
-  function toggleMute(){ muteBtn.textContent = (muteBtn.textContent==='🔊'?'🔇':'🔊'); }
+  function win(){
+    state.mode='win';
+    elWin.classList.remove('hidden');
+    sfx(1200,.12,'triangle',.35); sfx(1500,.18,'square',.25);
+  }
+  function togglePause(){
+    if(state.mode!=='playing') return;
+    state.paused = !state.paused;
+    pauseBtn.textContent = state.paused ? '▶️' : '⏸️';
+  }
 
+  // Buttons
   playBtn.onclick = startGame;
-  replayBtn.onclick = ()=>{ elEnd.classList.add('hidden'); startGame(); };
-
-  // safety: if the tab loses focus, stop ascending
-  window.addEventListener('blur', ()=> pressing=false);
-  document.addEventListener('visibilitychange', ()=>{ if(document.hidden) pressing=false; });
+  retryBtn.onclick = startGame;
+  againBtn.onclick = startGame;
+  pauseBtn.onclick = togglePause;
+  muteBtn.onclick = toggleMute;
 
   updateHUD();
 })();
