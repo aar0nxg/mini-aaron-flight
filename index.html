@@ -41,6 +41,7 @@
   * { -webkit-tap-highlight-color: transparent; }
 
   /* Character select */
+  #select{ z-index:11; } /* ensure above other overlays */
   .chooseGrid{display:grid;grid-template-columns:repeat(2,minmax(140px,1fr));gap:14px;margin-top:10px}
   .chooseCard{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px;border-radius:14px;
     border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);transition:transform .08s ease,background .15s ease}
@@ -174,8 +175,6 @@
   };
 
   /* ===== Pilot Data ===== */
-  // Map each pilot to their plane-top sprite and their girlfriend goal sprite.
-  // Replace filenames with your real assets; fallbacks are drawn if missing.
   const PILOTS = {
     aaron: { label:'Aaron', pilotImg:'aaron.png',  goalImg:'zarifa.png',    hugImg:'hug_aaron.png',  winLine:'Landed — Hug time with Zarifa 💖' },
     labib: { label:'Labib', pilotImg:'labib.png',  goalImg:'labib_gf.png',  hugImg:'hug_labib.png',  winLine:'Landed — Hug time with your girlfriend 💖' },
@@ -287,7 +286,7 @@
   window.addEventListener('keyup',up,true);
   window.addEventListener('keypress',e=>{ if(isFlyKey(e)||isRestartKey(e)) e.preventDefault(); },true);
 
-  // Touch / wheel behavior (same as your original)
+  // Touch / wheel behavior
   ['touchstart','touchmove','touchend','touchcancel'].forEach(type => {
     root.addEventListener(type, (e) => {
       const target = e.target;
@@ -304,8 +303,13 @@
     }, { passive: false });
   });
   root.addEventListener('wheel', (e) => { e.preventDefault(); }, { passive: false });
-  // Click to start (on canvas only, to avoid buttons)
-  canvas.addEventListener('click', ()=>{ if(state.mode!=='playing') startGame(); });
+
+  // Click to start — but NOT if select is visible
+  canvas.addEventListener('click', ()=>{
+    const selectVisible = !elSelect.classList.contains('hidden');
+    if(state.mode!=='playing' && !selectVisible) startGame();
+  });
+
   window.addEventListener('blur',()=>pressing=false);
   document.addEventListener('visibilitychange',()=>{ if(document.hidden) pressing=false; });
 
@@ -355,7 +359,6 @@
         ctx.drawImage(img, x, y, w, h);
         ctx.imageSmoothingEnabled=sm;
       } else {
-        // simple fallback doodles
         ctx.fillStyle='#ffd7c8'; ctx.fillRect(x+10,y+12,16,12);
         ctx.fillStyle='#0e0b2b'; ctx.fillRect(x+12,y+16,2,2); ctx.fillRect(x+20,y+16,2,2);
         ctx.fillStyle='#3a2b6d'; ctx.fillRect(x+8,y+24,20,10);
@@ -428,7 +431,7 @@
 
   const plane=new Plane();
   const obstacles=[];
-  let goal=null; // appears near finish
+  let goal=null;
 
   function spawnObstacle(){
     const r=Math.random();
@@ -486,14 +489,33 @@
     requestAnimationFrame(loop);
   }
 
-  /* ===== States ===== */
-  function showSelect(){ elSelect.classList.remove('hidden'); elStart.classList.add('hidden'); }
-  function showStart(){ elSelect.classList.add('hidden'); elStart.classList.remove('hidden'); }
+  /* ===== States & flow ===== */
+  function showSelect(){
+    elSelect.classList.remove('hidden');
+    elStart.classList.add('hidden');
+    elGameOver.classList.add('hidden');
+    elWin.classList.add('hidden');
+    state.mode='start';
+    pressing=false;
+
+    // reset any previous hug image to avoid “sticking”
+    hugImg.src = '';
+    hugImg.style.display = 'block';
+    hugFallback.style.display = 'none';
+  }
+  function showStart(){
+    elSelect.classList.add('hidden');
+    elStart.classList.remove('hidden');
+    elGameOver.classList.add('hidden');
+    elWin.classList.add('hidden');
+    state.mode='start';
+    pressing=false;
+  }
 
   function setPilot(key){
     state.pilot = key;
-    localStorage.setItem('pilot', key);
-    showStart();
+    localStorage.setItem('pilot', key); // remember choice (we still show select on next load)
+    showStart();                         // go to Start, not auto-starting the game
   }
   pickAaron.onclick = ()=>setPilot('aaron');
   pickLabib.onclick = ()=>setPilot('labib');
@@ -512,11 +534,10 @@
   function win(){
     state.mode='win'; elWin.classList.remove('hidden'); sfx(1200,.12,'triangle',.35); sfx(1500,.18,'square',.25);
     const key = state.pilot || 'aaron';
-    winTitle.textContent = PILOTS[key].winLine || 'Hug time! 💖';
-    winText.textContent  = 'A warm embrace. 🫶';
+    document.getElementById('winTitle').textContent = PILOTS[key].winLine || 'Hug time! 💖';
+    document.getElementById('winText').textContent  = 'A warm embrace. 🫶';
     hugFallback.style.display='none';
     hugImg.style.display='block';
-    // Try pilot-specific hug image; if missing, fallback SVG appears
     hugImg.src = PILOTS[key].hugImg || '';
   }
   function togglePause(){ if(state.mode!=='playing') return; state.paused=!state.paused; pauseBtn.textContent=state.paused?'▶️':'⏸️'; }
@@ -526,13 +547,10 @@
   pauseBtn.onclick=togglePause; muteBtn.onclick=toggleMute;
   changePilot1.onclick=showSelect; changePilot2.onclick=showSelect;
 
-  // Start flow: restore pilot if chosen before
-  state.pilot = localStorage.getItem('pilot');
-  if (!state.pilot) { showSelect(); } else { showStart(); }
-
+  // --- startup: ALWAYS show character select first (no auto-start) ---
+  showSelect();
   updateHUD();
 
-  // ====== END IIFE ======
 })();
 </script>
 </body>
