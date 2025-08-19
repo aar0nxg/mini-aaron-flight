@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Mini Aaron: Flight to Zarifa</title>
+<title>Mini Flight: Choose Your Journey</title>
 <style>
   :root{ --bg-1:#0b0820; --bg-2:#160f32; --bg-3:#201443; --accent:#ff5a7a; --accent-2:#b084ff; }
   html,body{height:100%;margin:0;background:
@@ -39,11 +39,24 @@
     user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   }
   * { -webkit-tap-highlight-color: transparent; }
+
+  /* Character select */
+  .chooseGrid{display:grid;grid-template-columns:repeat(2,minmax(140px,1fr));gap:14px;margin-top:10px}
+  .chooseCard{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px;border-radius:14px;
+    border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);transition:transform .08s ease,background .15s ease}
+  .chooseCard:active{transform:scale(.98)}
+  .chooseCard:hover{background:rgba(255,255,255,.10)}
+  .avatar{width:96px;height:96px;border-radius:12px;overflow:hidden;display:grid;place-items:center;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.12)}
+  .avatar img{width:100%;height:100%;image-rendering:pixelated;object-fit:cover}
+  .fallbackDot{display:inline-block;width:26px;height:26px;border-radius:50%;background:#b084ff}
+  .fallbackStar{font-weight:900;font-size:28px;color:#ffcf7a}
+  .fallbackHeart{font-weight:900;font-size:28px;color:#ff5a7a}
+  .label{font-weight:800}
 </style>
 </head>
 <body>
 <div id="gameRoot">
-  <canvas id="game" tabindex="0" aria-label="Mini Aaron Flight Game"></canvas>
+  <canvas id="game" tabindex="0" aria-label="Mini Flight Game"></canvas>
 
   <div class="hud">
     <div class="pill" id="livesPill">❤️❤️❤️</div>
@@ -58,12 +71,51 @@
 
   <div class="holdZone" id="holdZone">Hold to fly ↑ • Space / ↑ / W also work</div>
 
+  <!-- Character Select -->
+  <div class="overlay" id="select">
+    <div class="card">
+      <h1 style="margin:0 0 8px">Choose Your Journey 💫</h1>
+      <p style="margin:0 0 12px">Who’s piloting this trip?</p>
+      <div class="chooseGrid">
+        <button class="chooseCard" id="pickAaron" aria-label="Play as Aaron">
+          <div class="avatar">
+            <img id="avatarAaron" src="aaron.png" onerror="this.style.display='none'"/>
+            <span class="fallbackDot" aria-hidden="true"></span>
+          </div>
+          <div class="label">Aaron</div>
+        </button>
+        <button class="chooseCard" id="pickLabib" aria-label="Play as Labib">
+          <div class="avatar">
+            <img id="avatarLabib" src="labib.png" onerror="this.style.display='none'"/>
+            <span class="fallbackStar" aria-hidden="true">★</span>
+          </div>
+          <div class="label">Labib</div>
+        </button>
+        <button class="chooseCard" id="pickAsef" aria-label="Play as Asef">
+          <div class="avatar">
+            <img id="avatarAsef" src="asef.png" onerror="this.style.display='none'"/>
+            <span class="fallbackHeart" aria-hidden="true">♥</span>
+          </div>
+          <div class="label">Asef</div>
+        </button>
+        <button class="chooseCard" id="pickTajwar" aria-label="Play as Tajwar">
+          <div class="avatar">
+            <img id="avatarTajwar" src="tajwar.png" onerror="this.style.display='none'"/>
+            <span class="fallbackDot" aria-hidden="true"></span>
+          </div>
+          <div class="label">Tajwar</div>
+        </button>
+      </div>
+      <p class="hint">You can change pilot next round.</p>
+    </div>
+  </div>
+
   <!-- Start -->
   <div class="overlay" id="start">
     <div class="card">
-      <h1 style="margin:0 0 8px">The Flight to Zarifa ✈️💜</h1>
+      <h1 style="margin:0 0 8px">The Flight ✈️💜</h1>
       <p style="margin:0">Hold <b>Space / ↑ / W</b> or <b>hold screen/trackpad</b> to go up. Dodge meteors, birds, satellites, clouds, and gusts!</p>
-      <p class="hint">3 lives. Hit = lose a heart. At 0 → <b>Game Over</b>. Reach Zarifa → <b>HUG WIN</b>.</p>
+      <p class="hint">3 lives. Hit = lose a heart. At 0 → <b>Game Over</b>. Reach your girlfriend → <b>HUG WIN</b>.</p>
       <button class="action" id="playBtn">🎬 Fly!</button>
     </div>
   </div>
@@ -73,16 +125,18 @@
     <div class="card">
       <h2 style="margin:0 0 8px">Game Over 💔</h2>
       <p style="margin:0 0 12px">Press <b>Space</b> or <b>Enter</b> — or tap/click — to try again.</p>
-      <button class="action" id="retryBtn">↻ Restart</button>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <button class="action" id="retryBtn">↻ Restart</button>
+        <button class="action" id="changePilot1" style="background:linear-gradient(180deg,#6ea8ff,#9ec1ff)">👥 Change Pilot</button>
+      </div>
     </div>
   </div>
 
-  <!-- Win (hug.png with SVG fallback) -->
+  <!-- Win -->
   <div class="overlay hidden" id="win">
     <div class="card">
-      <h2 style="margin:0 0 10px">Landed in Bangladesh — Hug time 💖</h2>
-      <img id="hugImg" src="hug.png" alt="Aaron and Zarifa hugging"
-        style="image-rendering:pixelated;max-width:320px;width:100%;height:auto;border-radius:8px;border:1px solid rgba(255,255,255,.2);" />
+      <h2 id="winTitle" style="margin:0 0 10px">Hug time! 💖</h2>
+      <img id="hugImg" src="" alt="Hug" style="image-rendering:pixelated;max-width:320px;width:100%;height:auto;border-radius:8px;border:1px solid rgba(255,255,255,.2);" />
       <div id="hugFallback" style="display:none; margin:0 auto; max-width:320px">
         <svg viewBox="0 0 240 160" width="320" height="214" style="image-rendering:pixelated">
           <rect width="240" height="160" fill="#1a0f2c"/>
@@ -98,8 +152,11 @@
           <rect x="110" y="112" width="20" height="4" fill="#ffd0d6"/>
         </svg>
       </div>
-      <p style="margin:8px 0 14px">Mini Aaron & Zarifa hug and embrace. 🫶</p>
-      <button class="action" id="againBtn">↻ Play again</button>
+      <p id="winText" style="margin:8px 0 14px">A warm embrace. 🫶</p>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <button class="action" id="againBtn">↻ Play again</button>
+        <button class="action" id="changePilot2" style="background:linear-gradient(180deg,#6ea8ff,#9ec1ff)">👥 Change Pilot</button>
+      </div>
     </div>
   </div>
 </div>
@@ -116,12 +173,23 @@
     goalRevealKm: 1200
   };
 
+  /* ===== Pilot Data ===== */
+  // Map each pilot to their plane-top sprite and their girlfriend goal sprite.
+  // Replace filenames with your real assets; fallbacks are drawn if missing.
+  const PILOTS = {
+    aaron: { label:'Aaron', pilotImg:'aaron.png',  goalImg:'zarifa.png',    hugImg:'hug_aaron.png',  winLine:'Landed — Hug time with Zarifa 💖' },
+    labib: { label:'Labib', pilotImg:'labib.png',  goalImg:'labib_gf.png',  hugImg:'hug_labib.png',  winLine:'Landed — Hug time with your girlfriend 💖' },
+    asef:  { label:'Asef',  pilotImg:'asef.png',   goalImg:'asef_gf.png',   hugImg:'hug_asef.png',   winLine:'Landed — Hug time with your girlfriend 💖' },
+    tajwar:{ label:'Tajwar',pilotImg:'tajwar.png', goalImg:'tajwar_gf.png', hugImg:'hug_tajwar.png', winLine:'Landed — Hug time with your girlfriend 💖' }
+  };
+
   /* ===== State ===== */
   const state = {
     dpr:Math.min(2,window.devicePixelRatio||1),
     mode:'start',      // 'start' | 'playing' | 'gameover' | 'win'
     t:0, dist:0, lastSpawn:0,
-    lives:cfg.livesStart, muted:false, paused:false
+    lives:cfg.livesStart, muted:false, paused:false,
+    pilot:null
   };
 
   /* ===== Canvas ===== */
@@ -147,6 +215,21 @@
   const againBtn = document.getElementById('againBtn');
   const pauseBtn = document.getElementById('pauseBtn');
   const muteBtn = document.getElementById('muteBtn');
+  const changePilot1 = document.getElementById('changePilot1');
+  const changePilot2 = document.getElementById('changePilot2');
+
+  // Character select
+  const elSelect = document.getElementById('select');
+  const pickAaron = document.getElementById('pickAaron');
+  const pickLabib = document.getElementById('pickLabib');
+  const pickAsef = document.getElementById('pickAsef');
+  const pickTajwar = document.getElementById('pickTajwar');
+
+  // Win overlay dynamic bits
+  const winTitle = document.getElementById('winTitle');
+  const winText  = document.getElementById('winText');
+  const hugImg   = document.getElementById('hugImg');
+  const hugFallback = document.getElementById('hugFallback');
 
   function updateHUD(){
     elLives.textContent = '❤️'.repeat(state.lives) + '🤍'.repeat(Math.max(0, cfg.livesStart - state.lives));
@@ -154,9 +237,7 @@
     elProg.style.setProperty('--p', (state.dist/cfg.targetKm*100).toFixed(2));
   }
 
-  // Hug image fallback
-  const hugImg = document.getElementById('hugImg');
-  const hugFallback = document.getElementById('hugFallback');
+  // Hug image error fallback
   hugImg.addEventListener('error', ()=>{ hugImg.style.display='none'; hugFallback.style.display='block'; });
 
   /* ===== Audio ===== */
@@ -206,15 +287,14 @@
   window.addEventListener('keyup',up,true);
   window.addEventListener('keypress',e=>{ if(isFlyKey(e)||isRestartKey(e)) e.preventDefault(); },true);
 
-  // Mobile touch: prevent highlight/scroll, allow UI taps
+  // Touch / wheel behavior (same as your original)
   ['touchstart','touchmove','touchend','touchcancel'].forEach(type => {
     root.addEventListener(type, (e) => {
       const target = e.target;
-      if (target.closest('.btn, button, .action, #start, #gameover, #win')) {
+      if (target.closest('.btn, button, .action, #start, #gameover, #win, #select')) {
         return; // let UI work
       }
-      e.preventDefault(); // block page behavior
-
+      e.preventDefault();
       if (state.mode === 'playing') {
         if (type === 'touchstart') pressing = true;
         if (type === 'touchend' || type === 'touchcancel') pressing = false;
@@ -224,8 +304,8 @@
     }, { passive: false });
   });
   root.addEventListener('wheel', (e) => { e.preventDefault(); }, { passive: false });
-
-  root.addEventListener('click', ()=>{ if(state.mode!=='playing') startGame(); });
+  // Click to start (on canvas only, to avoid buttons)
+  canvas.addEventListener('click', ()=>{ if(state.mode!=='playing') startGame(); });
   window.addEventListener('blur',()=>pressing=false);
   document.addEventListener('visibilitychange',()=>{ if(document.hidden) pressing=false; });
 
@@ -234,9 +314,15 @@
   function makeStars(n,tw){const a=[]; for(let i=0;i<n;i++) a.push({x:Math.random()*cfg.width,y:Math.random()*cfg.height,s:Math.random()*2+1,a:0.6+Math.random()*0.4,tw:tw*(0.5+Math.random())}); return a;}
   function drawStars(layer,mul,color){ctx.save(); ctx.fillStyle=color; for(const st of layer){const x=(st.x-(scroll*mul)%(cfg.width+50)); const xx=x<-10?x+cfg.width+50:x; const tw=0.85+Math.sin(state.t*2+st.x*0.01)*0.15*st.tw; ctx.globalAlpha=st.a*tw; ctx.fillRect(xx,st.y,st.s,st.s);} ctx.restore(); ctx.globalAlpha=1;}
 
-  /* ===== Sprites ===== */
-  const doggoImg=new Image(); doggoImg.src="doggo.png"; let doggoReady=false; doggoImg.onload=()=>doggoReady=true;
-  const zarifaImg=new Image(); zarifaImg.src="zarifa.png"; let zarifaReady=false; zarifaImg.onload=()=>zarifaReady=true;
+  /* ===== Sprites (preload per pilot) ===== */
+  const pilotImgs = {};
+  const goalImgs  = {};
+  const hugImgs   = {};
+  for (const key in PILOTS){
+    pilotImgs[key] = new Image(); pilotImgs[key].src = PILOTS[key].pilotImg;
+    goalImgs[key]  = new Image(); goalImgs[key].src  = PILOTS[key].goalImg;
+    hugImgs[key]   = new Image(); hugImgs[key].src   = PILOTS[key].hugImg;
+  }
 
   /* ===== Entities ===== */
   class Plane{
@@ -260,10 +346,21 @@
       ctx.fillStyle='#ff7da0'; ctx.fillRect(this.w/2-8,-this.h/2,8,this.h);
       ctx.globalAlpha=.5; ctx.fillStyle='#ff7da0'; ctx.fillRect(-this.w/2-6,-2,4,4); ctx.globalAlpha=1;
 
-      // chibi Aaron on top
+      // pilot on top
       const w=36,h=36,x=-w/2,y=-this.h/2-h+6;
-      if(doggoReady){ const sm=ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled=false; ctx.drawImage(doggoImg,x,y,w,h); ctx.imageSmoothingEnabled=sm; }
-      else{ ctx.fillStyle='#ffd7c8'; ctx.fillRect(x+10,y+12,16,12); ctx.fillStyle='#0e0b2b'; ctx.fillRect(x+12,y+16,2,2); ctx.fillRect(x+20,y+16,2,2); ctx.fillStyle='#3a2b6d'; ctx.fillRect(x+8,y+24,20,10); ctx.fillStyle='#2a2451'; ctx.fillRect(x+6,y+12,20,2); }
+      const pilotKey = state.pilot || 'aaron';
+      const img = pilotImgs[pilotKey];
+      if (img && img.complete && img.naturalWidth){
+        const sm=ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled=false;
+        ctx.drawImage(img, x, y, w, h);
+        ctx.imageSmoothingEnabled=sm;
+      } else {
+        // simple fallback doodles
+        ctx.fillStyle='#ffd7c8'; ctx.fillRect(x+10,y+12,16,12);
+        ctx.fillStyle='#0e0b2b'; ctx.fillRect(x+12,y+16,2,2); ctx.fillRect(x+20,y+16,2,2);
+        ctx.fillStyle='#3a2b6d'; ctx.fillRect(x+8,y+24,20,10);
+        ctx.fillStyle='#2a2451'; ctx.fillRect(x+6,y+12,20,2);
+      }
 
       ctx.restore();
     }
@@ -308,15 +405,19 @@
     }
   }
 
-  // Zarifa goal object
+  // Girlfriend goal object (changes sprite by pilot)
   class Goal{
-    constructor(){ this.x=cfg.width+140; this.y=cfg.height*0.55; this.w=40; this.h=48; this.speed=320; this.active=true; }
-    rect(){ return {x:this.x-this.w/2,y:this.y-this.h/2,w:this.w,h:this.h}; }  /* <-- FIXED HERE */
+    constructor(){
+      this.x=cfg.width+140; this.y=cfg.height*0.55; this.w=40; this.h=48; this.speed=320; this.active=true;
+    }
+    rect(){ return {x:this.x-this.w/2,y:this.y-this.h/2,w:this.w,h:this.h}; }
     update(dt){ this.x -= this.speed*dt; if(this.x<-120) this.active=false; }
     draw(ctx){
-      if(!zarifaReady) return;
+      const key = state.pilot || 'aaron';
+      const img = goalImgs[key];
+      if(!(img && img.complete && img.naturalWidth)) return;
       const sm=ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled=false;
-      ctx.drawImage(zarifaImg, this.x-this.w/2, this.y-this.h, this.w, this.h);
+      ctx.drawImage(img, this.x-this.w/2, this.y-this.h, this.w, this.h);
       ctx.imageSmoothingEnabled=sm;
     }
   }
@@ -327,7 +428,7 @@
 
   const plane=new Plane();
   const obstacles=[];
-  let goal=null; // Zarifa appears near the finish
+  let goal=null; // appears near finish
 
   function spawnObstacle(){
     const r=Math.random();
@@ -351,7 +452,7 @@
     const interval=Math.max(0.6, cfg.spawnBase - (state.dist/cfg.targetKm)*0.4);
     if(state.lastSpawn>interval){ spawnObstacle(); state.lastSpawn=0; }
 
-    // reveal Zarifa near finish
+    // reveal goal near finish
     if(!goal && (cfg.targetKm - state.dist) <= cfg.goalRevealKm){ goal=new Goal(); }
 
     // updates
@@ -365,7 +466,7 @@
       if(!ob.alive) continue;
       if(overlap(pr, ob.rect())){ ob.alive=false; plane.takeHit(); break; }
     }
-    // collision with Zarifa → win
+    // collision with girlfriend → win
     if(goal && goal.active && overlap(pr, goal.rect())){ return win(); }
 
     // cull
@@ -386,21 +487,52 @@
   }
 
   /* ===== States ===== */
+  function showSelect(){ elSelect.classList.remove('hidden'); elStart.classList.add('hidden'); }
+  function showStart(){ elSelect.classList.add('hidden'); elStart.classList.remove('hidden'); }
+
+  function setPilot(key){
+    state.pilot = key;
+    localStorage.setItem('pilot', key);
+    showStart();
+  }
+  pickAaron.onclick = ()=>setPilot('aaron');
+  pickLabib.onclick = ()=>setPilot('labib');
+  pickAsef.onclick  = ()=>setPilot('asef');
+  pickTajwar.onclick= ()=>setPilot('tajwar');
+
   function startGame(){
+    if (!state.pilot) { showSelect(); return; }
     state.mode='playing'; state.paused=false; state.t=0; state.dist=0; state.lastSpawn=0; state.lives=cfg.livesStart;
     obstacles.length=0; goal=null; pressing=false; updateHUD();
-    elStart.classList.add('hidden'); elGameOver.classList.add('hidden'); elWin.classList.add('hidden');
+    elStart.classList.add('hidden'); elGameOver.classList.add('hidden'); elWin.classList.add('hidden'); elSelect.classList.add('hidden');
     window.focus(); canvas.focus(); initAudio();
     requestAnimationFrame(n=>{ last=n; requestAnimationFrame(loop); });
   }
   function gameOver(){ state.mode='gameover'; elGameOver.classList.remove('hidden'); }
-  function win(){ state.mode='win'; elWin.classList.remove('hidden'); sfx(1200,.12,'triangle',.35); sfx(1500,.18,'square',.25); }
+  function win(){
+    state.mode='win'; elWin.classList.remove('hidden'); sfx(1200,.12,'triangle',.35); sfx(1500,.18,'square',.25);
+    const key = state.pilot || 'aaron';
+    winTitle.textContent = PILOTS[key].winLine || 'Hug time! 💖';
+    winText.textContent  = 'A warm embrace. 🫶';
+    hugFallback.style.display='none';
+    hugImg.style.display='block';
+    // Try pilot-specific hug image; if missing, fallback SVG appears
+    hugImg.src = PILOTS[key].hugImg || '';
+  }
   function togglePause(){ if(state.mode!=='playing') return; state.paused=!state.paused; pauseBtn.textContent=state.paused?'▶️':'⏸️'; }
 
   // Buttons
-  playBtn.onclick=startGame; retryBtn.onclick=startGame; againBtn.onclick=startGame; pauseBtn.onclick=togglePause; muteBtn.onclick=toggleMute;
+  playBtn.onclick=startGame; retryBtn.onclick=startGame; againBtn.onclick=startGame;
+  pauseBtn.onclick=togglePause; muteBtn.onclick=toggleMute;
+  changePilot1.onclick=showSelect; changePilot2.onclick=showSelect;
+
+  // Start flow: restore pilot if chosen before
+  state.pilot = localStorage.getItem('pilot');
+  if (!state.pilot) { showSelect(); } else { showStart(); }
 
   updateHUD();
+
+  // ====== END IIFE ======
 })();
 </script>
 </body>
