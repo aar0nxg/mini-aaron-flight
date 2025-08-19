@@ -53,6 +53,17 @@
   .fallbackStar{font-weight:900;font-size:28px;color:#ffcf7a}
   .fallbackHeart{font-weight:900;font-size:28px;color:#ff5a7a}
   .label{font-weight:800}
+
+  /* ✨ Tiny sparkle hearts (DOM-based) */
+  .heartBurst{position:absolute;left:50%;bottom:72px;pointer-events:none;z-index:8}
+  .heart{position:absolute;font-size:16px;opacity:0.9;text-shadow:0 0 8px rgba(255,90,122,.45), 0 0 14px rgba(176,132,255,.35);
+    animation:riseHeart 1.1s ease-out forwards}
+  @keyframes riseHeart{
+    0%{transform:translate(-50%,0) scale(.9); opacity:.0}
+    10%{opacity:.95}
+    70%{opacity:.85}
+    100%{transform:translate(-50%,-110px) scale(1.05); opacity:0}
+  }
 </style>
 </head>
 <body>
@@ -160,6 +171,10 @@
       </div>
     </div>
   </div>
+
+  <!-- 🎵 Audio elements (flight soundtrack + horn SFX) -->
+  <audio id="musicFlight" src="music_flight.mp3" preload="auto" loop></audio>
+  <audio id="sfxHorn" src="horn.mp3" preload="auto"></audio>
 </div>
 
 <script>
@@ -230,6 +245,10 @@
   const hugImg   = document.getElementById('hugImg');
   const hugFallback = document.getElementById('hugFallback');
 
+  // 🎵 Audio elements
+  const musicFlight = document.getElementById('musicFlight');
+  const sfxHorn = document.getElementById('sfxHorn');
+
   function updateHUD(){
     elLives.textContent = '❤️'.repeat(state.lives) + '🤍'.repeat(Math.max(0, cfg.livesStart - state.lives));
     elKm.textContent = Math.max(0, cfg.targetKm - Math.floor(state.dist)).toLocaleString();
@@ -239,7 +258,7 @@
   // Hug image error fallback
   hugImg.addEventListener('error', ()=>{ hugImg.style.display='none'; hugFallback.style.display='block'; });
 
-  /* ===== Audio ===== */
+  /* ===== Audio (existing synth ambience kept; we’ll duck it under soundtrack) ===== */
   let actx, master, sfxGain, musicGain, oscA, oscB, chordTimer=null;
   function initAudio(){
     if(actx) return;
@@ -266,7 +285,14 @@
     const o=actx.createOscillator(), g=actx.createGain();
     o.type=type; o.frequency.value=freq; g.gain.value=gain; o.connect(g).connect(sfxGain); o.start();
     g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime+dur); o.stop(actx.currentTime+dur); }
-  function toggleMute(){ state.muted=!state.muted; muteBtn.textContent=state.muted?'🔇':'🔊'; if(master) master.gain.value=state.muted?0:.8; }
+  function toggleMute(){
+    state.muted=!state.muted;
+    muteBtn.textContent=state.muted?'🔇':'🔊';
+    if(master) master.gain.value=state.muted?0:.8;
+    // also control HTMLAudio elements
+    if(musicFlight){ musicFlight.muted = state.muted; }
+    if(sfxHorn){ sfxHorn.muted = state.muted; }
+  }
 
   /* ===== Input ===== */
   let pressing=false;
@@ -441,6 +467,29 @@
     obstacles.push(new Obstacle(kind,cfg.width+120,y,speed));
   }
 
+  /* ===== ✨ Tiny Sparkle Hearts ===== */
+  function sparkleHearts(){
+    const burst = document.createElement('div');
+    burst.className = 'heartBurst';
+    // random horizontal nudge so it feels organic
+    burst.style.left = `calc(50% + ${(Math.random()*40-20).toFixed(0)}px)`;
+    root.appendChild(burst);
+
+    const N = 6 + (Math.random()*3|0);
+    for(let i=0;i<N;i++){
+      const span = document.createElement('span');
+      span.className = 'heart';
+      span.textContent = Math.random() < 0.3 ? '💜' : '❤️';
+      span.style.left = `${(Math.random()*60-30).toFixed(0)}px`;
+      span.style.animationDuration = `${(0.9 + Math.random()*0.5).toFixed(2)}s`;
+      span.style.animationDelay = `${(i*0.06).toFixed(2)}s`;
+      span.style.fontSize = `${14 + Math.random()*8}px`;
+      burst.appendChild(span);
+    }
+    // cleanup after the last one should be done (~1.6s)
+    setTimeout(()=> burst.remove(), 1800);
+  }
+
   /* ===== Loop ===== */
   let last=performance.now();
   function loop(now){
@@ -528,19 +577,56 @@
     obstacles.length=0; goal=null; pressing=false; updateHUD();
     elStart.classList.add('hidden'); elGameOver.classList.add('hidden'); elWin.classList.add('hidden'); elSelect.classList.add('hidden');
     window.focus(); canvas.focus(); initAudio();
+
+    // duck synth pad under soundtrack & play soundtrack
+    if (musicGain) musicGain.gain.value = 0.0;
+    if (musicFlight){
+      try { musicFlight.currentTime = 0; musicFlight.muted = state.muted; musicFlight.play(); } catch {}
+    }
+
+    // ✨ spawn tiny hearts on liftoff
+    sparkleHearts();
     requestAnimationFrame(n=>{ last=n; requestAnimationFrame(loop); });
   }
-  function gameOver(){ state.mode='gameover'; elGameOver.classList.remove('hidden'); }
+  function stopMusic(){
+    if (musicFlight){
+      try { musicFlight.pause(); musicFlight.currentTime = 0; } catch {}
+    }
+  }
+  function gameOver(){ state.mode='gameover'; elGameOver.classList.remove('hidden'); stopMusic(); }
   function win(){
-    state.mode='win'; elWin.classList.remove('hidden'); sfx(1200,.12,'triangle',.35); sfx(1500,.18,'square',.25);
+    state.mode='win'; elWin.classList.remove('hidden'); stopMusic();
+    // keep your cute synth blips
+    sfx(1200,.12,'triangle',.35); sfx(1500,.18,'square',.25);
+
+    // 🎺 Horn SFX (a few quick honks)
+    if (sfxHorn && !state.muted){
+      try {
+        sfxHorn.currentTime = 0; sfxHorn.play();
+        setTimeout(()=>{ try{sfxHorn.currentTime=0; sfxHorn.play();}catch{} }, 300);
+        setTimeout(()=>{ try{sfxHorn.currentTime=0; sfxHorn.play();}catch{} }, 650);
+      } catch {}
+    }
+
     const key = state.pilot || 'aaron';
-    document.getElementById('winTitle').textContent = PILOTS[key].winLine || 'Hug time! 💖';
-    document.getElementById('winText').textContent  = 'A warm embrace. 🫶';
+    winTitle.textContent = PILOTS[key].winLine || 'Hug time! 💖';
+    winText.textContent  = 'A warm embrace. 🫶';
     hugFallback.style.display='none';
     hugImg.style.display='block';
     hugImg.src = PILOTS[key].hugImg || '';
   }
-  function togglePause(){ if(state.mode!=='playing') return; state.paused=!state.paused; pauseBtn.textContent=state.paused?'▶️':'⏸️'; }
+  function togglePause(){
+    if(state.mode!=='playing') return;
+    state.paused=!state.paused;
+    pauseBtn.textContent=state.paused?'▶️':'⏸️';
+    // pause/resume soundtrack too
+    if (musicFlight){
+      try {
+        if (state.paused) musicFlight.pause();
+        else musicFlight.play();
+      } catch {}
+    }
+  }
 
   // Buttons
   playBtn.onclick=startGame; retryBtn.onclick=startGame; againBtn.onclick=startGame;
