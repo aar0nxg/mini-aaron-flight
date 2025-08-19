@@ -413,8 +413,11 @@
     rect(){ return {x:this.x-this.w/2,y:this.y-this.h/2,w:this.w,h:this.h}; }
     update(dt){
       this.t+=dt; this.x-=this.speed*dt; if(this.x<-120) this.alive=false;
-      if(this.kind==='meteor') this.y+=Math.sin(this.t*8)*0.6;
-      if(this.kind==='satellite') this.y+=Math.sin(this.t*5)*0.4;
+
+      // increased wobble late-game (keeps visual feel, raises challenge)
+      const mult = diffFactor();
+      if(this.kind==='meteor')    this.y += Math.sin(this.t*8) * (0.6 * Math.min(1.8, mult));
+      if(this.kind==='satellite') this.y += Math.sin(this.t*5) * (0.4 * Math.min(1.6, mult));
     }
     draw(ctx){
       ctx.save(); ctx.translate(this.x,this.y);
@@ -462,12 +465,24 @@
   const plane=new Plane();
   const obstacles=[]; let goal=null;
 
-  function spawnObstacle(){
+  /* ===== Difficulty helper ===== */
+  // Scales from 1.0 (start) to ~3.6 near finish; tweak 2.6 for spice.
+  function diffFactor(){
+    const p = Math.min(1, state.dist / cfg.targetKm);
+    return 1 + (p*p) * 2.6;
+  }
+
+  function spawnObstacle(xOffset = 0){
     const r=Math.random();
     const kind = r<.35?'bird' : r<.6?'cloud' : r<.75?'gust' : r<.9?'meteor' : 'satellite';
     const y=60+Math.random()*(cfg.height-120);
-    const speed=cfg.obsSpeedMin+Math.random()*(cfg.obsSpeedMax-cfg.obsSpeedMin);
-    obstacles.push(new Obstacle(kind,cfg.width+120,y,speed));
+
+    // speed scales with progress
+    const mult = diffFactor();
+    const base = cfg.obsSpeedMin + Math.random() * (cfg.obsSpeedMax - cfg.obsSpeedMin);
+    const speed = base * mult;
+
+    obstacles.push(new Obstacle(kind,cfg.width+120+xOffset,y,speed));
   }
 
   /* ✨ Sparkle Hearts */
@@ -501,8 +516,19 @@
 
     // progress & spawns
     state.dist=Math.min(cfg.targetKm, state.dist + (cfg.baseSpeed/3.5)*dt);
-    const interval=Math.max(0.6, cfg.spawnBase - (state.dist/cfg.targetKm)*0.4);
-    if(state.lastSpawn>interval){ spawnObstacle(); state.lastSpawn=0; }
+
+    // Tighter spawn interval + occasional doubles near the end
+    const p = Math.min(1, state.dist / cfg.targetKm);
+    const interval = Math.max(0.35, cfg.spawnBase - (p * 0.75));
+    if(state.lastSpawn>interval){
+      spawnObstacle();
+      state.lastSpawn=0;
+
+      // up to 15% chance to spawn a second obstacle as you near the goal
+      if(Math.random() < p * 0.15){
+        spawnObstacle(80 + Math.random()*60);
+      }
+    }
 
     // reveal goal near finish
     if(!goal && (cfg.targetKm - state.dist) <= cfg.goalRevealKm){ goal=new Goal(); }
