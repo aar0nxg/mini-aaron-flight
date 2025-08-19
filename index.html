@@ -172,9 +172,13 @@
     </div>
   </div>
 
-  <!-- 🎵 Audio elements (flight soundtrack + horn SFX) -->
-  <audio id="musicFlight" src="music_flight.mp3" preload="auto" loop></audio>
-  <audio id="sfxHorn" src="horn.mp3" preload="auto"></audio>
+  <!-- 🎵 Audio elements -->
+  <!-- Looping 8-bit soundtrack ONLY while flying -->
+  <audio id="musicRocket" src="audio/rocket_theme.mp3" preload="auto" loop></audio>
+  <!-- Horns at win -->
+  <audio id="sfxHorn" src="audio/horns.mp3" preload="auto"></audio>
+  <!-- Game over sound -->
+  <audio id="sfxGameOver" src="audio/gameover.mp3" preload="auto"></audio>
 </div>
 
 <script>
@@ -246,8 +250,9 @@
   const hugFallback = document.getElementById('hugFallback');
 
   // 🎵 Audio elements
-  const musicFlight = document.getElementById('musicFlight');
+  const musicRocket = document.getElementById('musicRocket');
   const sfxHorn = document.getElementById('sfxHorn');
+  const sfxGameOver = document.getElementById('sfxGameOver');
 
   function updateHUD(){
     elLives.textContent = '❤️'.repeat(state.lives) + '🤍'.repeat(Math.max(0, cfg.livesStart - state.lives));
@@ -258,7 +263,7 @@
   // Hug image error fallback
   hugImg.addEventListener('error', ()=>{ hugImg.style.display='none'; hugFallback.style.display='block'; });
 
-  /* ===== Audio (existing synth ambience kept; we’ll duck it under soundtrack) ===== */
+  /* ===== Audio (existing synth pad kept; duck under soundtrack) ===== */
   let actx, master, sfxGain, musicGain, oscA, oscB, chordTimer=null;
   function initAudio(){
     if(actx) return;
@@ -290,8 +295,9 @@
     muteBtn.textContent=state.muted?'🔇':'🔊';
     if(master) master.gain.value=state.muted?0:.8;
     // also control HTMLAudio elements
-    if(musicFlight){ musicFlight.muted = state.muted; }
-    if(sfxHorn){ sfxHorn.muted = state.muted; }
+    if(musicRocket) musicRocket.muted = state.muted;
+    if(sfxHorn)     sfxHorn.muted     = state.muted;
+    if(sfxGameOver) sfxGameOver.muted = state.muted;
   }
 
   /* ===== Input ===== */
@@ -471,7 +477,6 @@
   function sparkleHearts(){
     const burst = document.createElement('div');
     burst.className = 'heartBurst';
-    // random horizontal nudge so it feels organic
     burst.style.left = `calc(50% + ${(Math.random()*40-20).toFixed(0)}px)`;
     root.appendChild(burst);
 
@@ -486,7 +491,6 @@
       span.style.fontSize = `${14 + Math.random()*8}px`;
       burst.appendChild(span);
     }
-    // cleanup after the last one should be done (~1.6s)
     setTimeout(()=> burst.remove(), 1800);
   }
 
@@ -578,36 +582,44 @@
     elStart.classList.add('hidden'); elGameOver.classList.add('hidden'); elWin.classList.add('hidden'); elSelect.classList.add('hidden');
     window.focus(); canvas.focus(); initAudio();
 
-    // duck synth pad under soundtrack & play soundtrack
+    // Duck synth pad under soundtrack & start looping soundtrack
     if (musicGain) musicGain.gain.value = 0.0;
-    if (musicFlight){
-      try { musicFlight.currentTime = 0; musicFlight.muted = state.muted; musicFlight.play(); } catch {}
+    if (musicRocket){
+      try { musicRocket.currentTime = 0; musicRocket.muted = state.muted; musicRocket.play(); } catch {}
     }
 
-    // ✨ spawn tiny hearts on liftoff
+    // ✨ hearts on liftoff (visual only)
     sparkleHearts();
     requestAnimationFrame(n=>{ last=n; requestAnimationFrame(loop); });
   }
   function stopMusic(){
-    if (musicFlight){
-      try { musicFlight.pause(); musicFlight.currentTime = 0; } catch {}
+    if (musicRocket){
+      try { musicRocket.pause(); musicRocket.currentTime = 0; } catch {}
     }
   }
-  function gameOver(){ state.mode='gameover'; elGameOver.classList.remove('hidden'); stopMusic(); }
+  function gameOver(){
+    state.mode='gameover';
+    elGameOver.classList.remove('hidden');
+    stopMusic();
+    // play game over sfx
+    if (sfxGameOver && !state.muted){
+      try { sfxGameOver.currentTime = 0; sfxGameOver.play(); } catch {}
+    }
+  }
   function win(){
-    state.mode='win'; elWin.classList.remove('hidden'); stopMusic();
-    // keep your cute synth blips
+    state.mode='win';
+    elWin.classList.remove('hidden');
+    stopMusic();
+    // cute synth blips
     sfx(1200,.12,'triangle',.35); sfx(1500,.18,'square',.25);
-
-    // 🎺 Horn SFX (a few quick honks)
+    // horns sfx
     if (sfxHorn && !state.muted){
       try {
         sfxHorn.currentTime = 0; sfxHorn.play();
-        setTimeout(()=>{ try{sfxHorn.currentTime=0; sfxHorn.play();}catch{} }, 300);
-        setTimeout(()=>{ try{sfxHorn.currentTime=0; sfxHorn.play();}catch{} }, 650);
+        // optional second short honk for flavor
+        setTimeout(()=>{ try{sfxHorn.currentTime=0; sfxHorn.play();}catch{} }, 400);
       } catch {}
     }
-
     const key = state.pilot || 'aaron';
     winTitle.textContent = PILOTS[key].winLine || 'Hug time! 💖';
     winText.textContent  = 'A warm embrace. 🫶';
@@ -620,10 +632,10 @@
     state.paused=!state.paused;
     pauseBtn.textContent=state.paused?'▶️':'⏸️';
     // pause/resume soundtrack too
-    if (musicFlight){
+    if (musicRocket){
       try {
-        if (state.paused) musicFlight.pause();
-        else musicFlight.play();
+        if (state.paused) musicRocket.pause();
+        else musicRocket.play();
       } catch {}
     }
   }
