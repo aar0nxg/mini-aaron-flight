@@ -1,655 +1,181 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Mini Flight: Choose Your Journey</title>
-<style>
-  :root{ --bg-1:#0b0820; --bg-2:#160f32; --bg-3:#201443; --accent:#ff5a7a; --accent-2:#b084ff; }
-  html,body{height:100%;margin:0;background:
-    radial-gradient(1600px 100% at 50% 0%,rgba(255,255,255,.05),transparent),
-    linear-gradient(180deg,var(--bg-1),var(--bg-2) 60%,var(--bg-3));
-    color:#fff;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;}
-
-  #gameRoot{position:relative;max-width:960px;margin:0 auto;height:100vh;overflow:hidden;
-    box-shadow:0 8px 40px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.07);border-radius:16px}
-  canvas{display:block;width:100%;height:100%;outline:none}
-
-  .hud{position:absolute;top:12px;left:12px;display:flex;gap:10px;z-index:5}
-  .pill{background:rgba(0,0,0,.35);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.15);padding:8px 12px;border-radius:999px}
-  .hud-right{position:absolute;top:12px;right:12px;display:flex;gap:10px;z-index:6}
-  .btn{cursor:pointer;user-select:none}
-  .bar{--p:0;position:relative;height:10px;width:240px;border-radius:999px;background:rgba(255,255,255,.15);overflow:hidden}
-  .bar::after{content:"";position:absolute;inset:0;width:calc(var(--p)*1%);background:linear-gradient(90deg,var(--accent),var(--accent-2))}
-  .rec{position:absolute;top:14px;right:14px;color:#ff4d4d;font-weight:800;text-shadow:0 0 10px #ff4d4d80}
-  .rec::before{content:"● ";}
-
-  .overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,0,20,.78);z-index:10;transition:opacity .25s}
-  .overlay.hidden{opacity:0;pointer-events:none}
-  .card{background:rgba(255,255,255,.07);padding:28px;border-radius:16px;text-align:center;border:1px solid rgba(255,255,255,.15);max-width:720px}
-  .action{border:none;padding:12px 18px;border-radius:12px;font-weight:800;cursor:pointer;background:linear-gradient(180deg,var(--accent),#ff87a0);color:#fff}
-
-  .holdZone{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:7;background:rgba(255,255,255,.08);
-            border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(6px);padding:10px 16px;border-radius:999px;user-select:none}
-  .hint{opacity:.85;font-size:12px;margin-top:6px}
-
-  /* Mobile “no highlight / no scroll” fix */
-  html, body, #gameRoot, canvas {
-    touch-action: none; -ms-touch-action: none; overscroll-behavior: none;
-    user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
-  }
-  * { -webkit-tap-highlight-color: transparent; }
-
-  /* Character select */
-  #select{ z-index:11; } /* ensure above other overlays */
-  .chooseGrid{display:grid;grid-template-columns:repeat(2,minmax(140px,1fr));gap:14px;margin-top:10px}
-  .chooseCard{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px;border-radius:14px;
-    border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);transition:transform .08s ease,background .15s ease}
-  .chooseCard:active{transform:scale(.98)}
-  .chooseCard:hover{background:rgba(255,255,255,.10)}
-  .avatar{width:96px;height:96px;border-radius:12px;overflow:hidden;display:grid;place-items:center;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.12)}
-  .avatar img{width:100%;height:100%;image-rendering:pixelated;object-fit:cover}
-  .fallbackDot{display:inline-block;width:26px;height:26px;border-radius:50%;background:#b084ff}
-  .fallbackStar{font-weight:900;font-size:28px;color:#ffcf7a}
-  .fallbackHeart{font-weight:900;font-size:28px;color:#ff5a7a}
-  .label{font-weight:800}
-
-  /* ✨ Tiny sparkle hearts (DOM-based) */
-  .heartBurst{position:absolute;left:50%;bottom:72px;pointer-events:none;z-index:8}
-  .heart{position:absolute;font-size:16px;opacity:0.9;text-shadow:0 0 8px rgba(255,90,122,.45), 0 0 14px rgba(176,132,255,.35);
-    animation:riseHeart 1.1s ease-out forwards}
-  @keyframes riseHeart{
-    0%{transform:translate(-50%,0) scale(.9); opacity:.0}
-    10%{opacity:.95}
-    70%{opacity:.85}
-    100%{transform:translate(-50%,-110px) scale(1.05); opacity:0}
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Choose Your Journey</title>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      color: white;
+      font-family: 'Press Start 2P', cursive, monospace;
+      overflow: hidden;
+      text-align: center;
+    }
+    #menu, #gameOverScreen, #victoryScreen {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0,0,0,0.9);
+      z-index: 10;
+    }
+    #gameCanvas {
+      background: linear-gradient(black, darkblue);
+      display: block;
+      margin: 0 auto;
+    }
+    .btn {
+      background: white;
+      color: black;
+      padding: 10px 20px;
+      margin: 10px;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 14px;
+    }
+    .btn:hover {
+      background: pink;
+      color: white;
+    }
+    .sparkle {
+      position: absolute;
+      width: 10px; height: 10px;
+      background: pink;
+      border-radius: 50%;
+      opacity: 0.8;
+      animation: floatUp 2s ease-out forwards;
+    }
+    @keyframes floatUp {
+      from { transform: translateY(0); opacity: 1; }
+      to { transform: translateY(-100px); opacity: 0; }
+    }
+  </style>
 </head>
 <body>
-<div id="gameRoot">
-  <canvas id="game" tabindex="0" aria-label="Mini Flight Game"></canvas>
-
-  <div class="hud">
-    <div class="pill" id="livesPill">❤️❤️❤️</div>
-    <div class="pill">✈️ Dist: <span id="km">10,000</span></div>
-    <div class="pill bar" id="progress"></div>
-  </div>
-  <div class="hud-right">
-    <div class="pill btn" id="pauseBtn" title="Pause/Resume">⏸️</div>
-    <div class="pill btn" id="muteBtn" title="Mute/Unmute">🔊</div>
-  </div>
-  <div class="rec">REC</div>
-
-  <div class="holdZone" id="holdZone">Hold to fly ↑ • Space / ↑ / W also work</div>
-
-  <!-- Character Select -->
-  <div class="overlay" id="select">
-    <div class="card">
-      <h1 style="margin:0 0 8px">Choose Your Journey 💫</h1>
-      <p style="margin:0 0 12px">Who’s piloting this trip?</p>
-      <div class="chooseGrid">
-        <button class="chooseCard" id="pickAaron" aria-label="Play as Aaron">
-          <div class="avatar">
-            <img id="avatarAaron" src="aaron.png" onerror="this.style.display='none'"/>
-            <span class="fallbackDot" aria-hidden="true"></span>
-          </div>
-          <div class="label">Aaron</div>
-        </button>
-        <button class="chooseCard" id="pickLabib" aria-label="Play as Labib">
-          <div class="avatar">
-            <img id="avatarLabib" src="labib.png" onerror="this.style.display='none'"/>
-            <span class="fallbackStar" aria-hidden="true">★</span>
-          </div>
-          <div class="label">Labib</div>
-        </button>
-        <button class="chooseCard" id="pickAsef" aria-label="Play as Asef">
-          <div class="avatar">
-            <img id="avatarAsef" src="asef.png" onerror="this.style.display='none'"/>
-            <span class="fallbackHeart" aria-hidden="true">♥</span>
-          </div>
-          <div class="label">Asef</div>
-        </button>
-        <button class="chooseCard" id="pickTajwar" aria-label="Play as Tajwar">
-          <div class="avatar">
-            <img id="avatarTajwar" src="tajwar.png" onerror="this.style.display='none'"/>
-            <span class="fallbackDot" aria-hidden="true"></span>
-          </div>
-          <div class="label">Tajwar</div>
-        </button>
-      </div>
-      <p class="hint">You can change pilot next round.</p>
-    </div>
+  <!-- Menu -->
+  <div id="menu">
+    <h1>Choose Your Journey</h1>
+    <button class="btn" onclick="startGame('Aaron')">Aaron</button>
+    <button class="btn" onclick="startGame('Labib')">Labib</button>
+    <button class="btn" onclick="startGame('Asef')">Asef</button>
+    <button class="btn" onclick="startGame('Tajwar')">Tajwar</button>
   </div>
 
-  <!-- Start -->
-  <div class="overlay" id="start">
-    <div class="card">
-      <h1 style="margin:0 0 8px">The Flight ✈️💜</h1>
-      <p style="margin:0">Hold <b>Space / ↑ / W</b> or <b>hold screen/trackpad</b> to go up. Dodge meteors, birds, satellites, clouds, and gusts!</p>
-      <p class="hint">3 lives. Hit = lose a heart. At 0 → <b>Game Over</b>. Reach your girlfriend → <b>HUG WIN</b>.</p>
-      <button class="action" id="playBtn">🎬 Fly!</button>
-    </div>
+  <!-- Game Canvas -->
+  <canvas id="gameCanvas" width="480" height="640"></canvas>
+
+  <!-- Game Over Screen -->
+  <div id="gameOverScreen" style="display:none;">
+    <h1>Game Over!</h1>
+    <button class="btn" onclick="restartGame()">Restart</button>
+    <button class="btn" onclick="backToMenu()">Change Pilot</button>
   </div>
 
-  <!-- Game Over -->
-  <div class="overlay hidden" id="gameover">
-    <div class="card">
-      <h2 style="margin:0 0 8px">Game Over 💔</h2>
-      <p style="margin:0 0 12px">Press <b>Space</b> or <b>Enter</b> — or tap/click — to try again.</p>
-      <div style="display:flex;gap:8px;justify-content:center">
-        <button class="action" id="retryBtn">↻ Restart</button>
-        <button class="action" id="changePilot1" style="background:linear-gradient(180deg,#6ea8ff,#9ec1ff)">👥 Change Pilot</button>
-      </div>
-    </div>
+  <!-- Victory Screen -->
+  <div id="victoryScreen" style="display:none;">
+    <h1>You Made It! 🎉</h1>
+    <button class="btn" onclick="restartGame()">Play Again</button>
+    <button class="btn" onclick="backToMenu()">Change Pilot</button>
   </div>
 
-  <!-- Win -->
-  <div class="overlay hidden" id="win">
-    <div class="card">
-      <h2 id="winTitle" style="margin:0 0 10px">Hug time! 💖</h2>
-      <img id="hugImg" src="" alt="Hug" style="image-rendering:pixelated;max-width:320px;width:100%;height:auto;border-radius:8px;border:1px solid rgba(255,255,255,.2);" />
-      <div id="hugFallback" style="display:none; margin:0 auto; max-width:320px">
-        <svg viewBox="0 0 240 160" width="320" height="214" style="image-rendering:pixelated">
-          <rect width="240" height="160" fill="#1a0f2c"/>
-          <g fill="#ff7ea0"><rect x="88" y="34" width="8" height="8"/><rect x="144" y="34" width="8" height="8"/>
-          <rect x="80" y="42" width="72" height="8"/><rect x="72" y="50" width="88" height="8"/>
-          <rect x="72" y="58" width="88" height="8"/><rect x="80" y="66" width="72" height="8"/><rect x="96" y="74" width="40" height="8"/></g>
-          <g><rect x="84" y="84" width="24" height="18" fill="#ffd7c8"/><rect x="90" y="90" width="12" height="3" fill="#2a2451"/>
-          <rect x="92" y="93" width="2" height="2" fill="#0e0b2b"/><rect x="99" y="93" width="2" height="2" fill="#0e0b2b"/>
-          <rect x="84" y="102" width="24" height="16" fill="#3a2b6d"/><rect x="92" y="112" width="16" height="4" fill="#ffd7c8"/></g>
-          <g><rect x="128" y="84" width="24" height="18" fill="#ffcfdd"/><rect x="128" y="80" width="24" height="6" fill="#f19ec4"/>
-          <rect x="133" y="92" width="3" height="3" fill="#5b2b6d"/><rect x="141" y="92" width="3" height="3" fill="#5b2b6d"/>
-          <rect x="128" y="102" width="24" height="16" fill="#8d3c7a"/><rect x="128" y="112" width="16" height="4" fill="#ffcfdd"/></g>
-          <rect x="110" y="112" width="20" height="4" fill="#ffd0d6"/>
-        </svg>
-      </div>
-      <p id="winText" style="margin:8px 0 14px">A warm embrace. 🫶</p>
-      <div style="display:flex;gap:8px;justify-content:center">
-        <button class="action" id="againBtn">↻ Play again</button>
-        <button class="action" id="changePilot2" style="background:linear-gradient(180deg,#6ea8ff,#9ec1ff)">👥 Change Pilot</button>
-      </div>
-    </div>
-  </div>
+  <!-- Audio -->
+  <audio id="rocketTheme" src="rocket-theme.mp3" loop></audio>
+  <audio id="gameOverSound" src="gameover.mp3"></audio>
+  <audio id="victoryHorn" src="victory-horn.mp3"></audio>
 
-  <!-- 🎵 Audio elements -->
-  <!-- Looping 8-bit soundtrack ONLY while flying -->
-  <audio id="musicRocket" src="audio/rocket_theme.mp3" preload="auto" loop></audio>
-  <!-- Horns at win -->
-  <audio id="sfxHorn" src="audio/horns.mp3" preload="auto"></audio>
-  <!-- Game over sound -->
-  <audio id="sfxGameOver" src="audio/gameover.mp3" preload="auto"></audio>
-</div>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
 
-<script>
-(() => {
-  /* ===== Config ===== */
-  const cfg = {
-    width:960, height:540,
-    gravity:1400, thrust:2400, maxVy:800,
-    baseSpeed:300, targetKm:10000,
-    livesStart:3,
-    spawnBase:1.0, obsSpeedMin:280, obsSpeedMax:420,
-    goalRevealKm: 1200
-  };
+    const menu = document.getElementById("menu");
+    const gameOverScreen = document.getElementById("gameOverScreen");
+    const victoryScreen = document.getElementById("victoryScreen");
 
-  /* ===== Pilot Data ===== */
-  const PILOTS = {
-    aaron: { label:'Aaron', pilotImg:'aaron.png',  goalImg:'zarifa.png',    hugImg:'hug_aaron.png',  winLine:'Landed — Hug time with Zarifa 💖' },
-    labib: { label:'Labib', pilotImg:'labib.png',  goalImg:'labib_gf.png',  hugImg:'hug_labib.png',  winLine:'Landed — Hug time with your girlfriend 💖' },
-    asef:  { label:'Asef',  pilotImg:'asef.png',   goalImg:'asef_gf.png',   hugImg:'hug_asef.png',   winLine:'Landed — Hug time with your girlfriend 💖' },
-    tajwar:{ label:'Tajwar',pilotImg:'tajwar.png', goalImg:'tajwar_gf.png', hugImg:'hug_tajwar.png', winLine:'Landed — Hug time with your girlfriend 💖' }
-  };
+    const rocketTheme = document.getElementById("rocketTheme");
+    const gameOverSound = document.getElementById("gameOverSound");
+    const victoryHorn = document.getElementById("victoryHorn");
 
-  /* ===== State ===== */
-  const state = {
-    dpr:Math.min(2,window.devicePixelRatio||1),
-    mode:'start',      // 'start' | 'playing' | 'gameover' | 'win'
-    t:0, dist:0, lastSpawn:0,
-    lives:cfg.livesStart, muted:false, paused:false,
-    pilot:null
-  };
+    let lives = 3;
+    let gameRunning = false;
+    let currentPilot = null;
 
-  /* ===== Canvas ===== */
-  const root = document.getElementById('gameRoot');
-  const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
-  function resize(){
-    canvas.width = canvas.clientWidth * state.dpr;
-    canvas.height = canvas.clientHeight * state.dpr;
-    ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
-  }
-  new ResizeObserver(resize).observe(root); resize();
+    function startGame(pilot) {
+      currentPilot = pilot;
+      menu.style.display = "none";
+      gameOverScreen.style.display = "none";
+      victoryScreen.style.display = "none";
+      gameRunning = true;
+      lives = 3;
 
-  /* ===== UI ===== */
-  const elLives = document.getElementById('livesPill');
-  const elKm = document.getElementById('km');
-  const elProg = document.getElementById('progress');
-  const elStart = document.getElementById('start');
-  const elGameOver = document.getElementById('gameover');
-  const elWin = document.getElementById('win');
-  const playBtn = document.getElementById('playBtn');
-  const retryBtn = document.getElementById('retryBtn');
-  const againBtn = document.getElementById('againBtn');
-  const pauseBtn = document.getElementById('pauseBtn');
-  const muteBtn = document.getElementById('muteBtn');
-  const changePilot1 = document.getElementById('changePilot1');
-  const changePilot2 = document.getElementById('changePilot2');
-
-  // Character select
-  const elSelect = document.getElementById('select');
-  const pickAaron = document.getElementById('pickAaron');
-  const pickLabib = document.getElementById('pickLabib');
-  const pickAsef = document.getElementById('pickAsef');
-  const pickTajwar = document.getElementById('pickTajwar');
-
-  // Win overlay dynamic bits
-  const winTitle = document.getElementById('winTitle');
-  const winText  = document.getElementById('winText');
-  const hugImg   = document.getElementById('hugImg');
-  const hugFallback = document.getElementById('hugFallback');
-
-  // 🎵 Audio elements
-  const musicRocket = document.getElementById('musicRocket');
-  const sfxHorn = document.getElementById('sfxHorn');
-  const sfxGameOver = document.getElementById('sfxGameOver');
-
-  function updateHUD(){
-    elLives.textContent = '❤️'.repeat(state.lives) + '🤍'.repeat(Math.max(0, cfg.livesStart - state.lives));
-    elKm.textContent = Math.max(0, cfg.targetKm - Math.floor(state.dist)).toLocaleString();
-    elProg.style.setProperty('--p', (state.dist/cfg.targetKm*100).toFixed(2));
-  }
-
-  // Hug image error fallback
-  hugImg.addEventListener('error', ()=>{ hugImg.style.display='none'; hugFallback.style.display='block'; });
-
-  /* ===== Audio (existing synth pad kept; duck under soundtrack) ===== */
-  let actx, master, sfxGain, musicGain, oscA, oscB, chordTimer=null;
-  function initAudio(){
-    if(actx) return;
-    actx = new (window.AudioContext||window.webkitAudioContext)();
-    master = actx.createGain(); master.connect(actx.destination); master.gain.value = state.muted ? 0 : .8;
-    sfxGain = actx.createGain(); sfxGain.connect(master); sfxGain.gain.value = .8;
-    musicGain = actx.createGain(); musicGain.connect(master); musicGain.gain.value = .10;
-
-    oscA = actx.createOscillator(); oscB = actx.createOscillator();
-    const gA = actx.createGain(), gB = actx.createGain(); gA.gain.value=0; gB.gain.value=0;
-    oscA.type='sine'; oscB.type='triangle';
-    oscA.connect(gA).connect(musicGain); oscB.connect(gB).connect(musicGain);
-    oscA.start(); oscB.start();
-
-    const chords=[[220,275],[176,330],[293,247],[220,275]]; let i=0;
-    function tick(){const [a,b]=chords[i%chords.length]; i++;
-      oscA.frequency.setTargetAtTime(a,actx.currentTime,.2);
-      oscB.frequency.setTargetAtTime(b,actx.currentTime,.2);
-      gA.gain.setTargetAtTime(.45,actx.currentTime,.4); gB.gain.setTargetAtTime(.4,actx.currentTime,.4);
-      const off=actx.currentTime+4.5; gA.gain.setTargetAtTime(0,off,.8); gB.gain.setTargetAtTime(0,off,.8);}
-    tick(); chordTimer=setInterval(tick,6000);
-  }
-  function sfx(freq=900,dur=.08,type='square',gain=.25){ if(!actx) return;
-    const o=actx.createOscillator(), g=actx.createGain();
-    o.type=type; o.frequency.value=freq; g.gain.value=gain; o.connect(g).connect(sfxGain); o.start();
-    g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime+dur); o.stop(actx.currentTime+dur); }
-  function toggleMute(){
-    state.muted=!state.muted;
-    muteBtn.textContent=state.muted?'🔇':'🔊';
-    if(master) master.gain.value=state.muted?0:.8;
-    // also control HTMLAudio elements
-    if(musicRocket) musicRocket.muted = state.muted;
-    if(sfxHorn)     sfxHorn.muted     = state.muted;
-    if(sfxGameOver) sfxGameOver.muted = state.muted;
-  }
-
-  /* ===== Input ===== */
-  let pressing=false;
-  function isFlyKey(e){const c=e.code,k=e.key;return c==="Space"||c==="Spacebar"||c==="ArrowUp"||c==="KeyW"||k===" "||k==="w"||k==="W";}
-  function isRestartKey(e){const c=e.code,k=e.key;return c==="Space"||c==="Enter"||k===" "||k==="Enter";}
-  function down(e){
-    if(state.mode==='playing'){
-      if(isFlyKey(e)){ pressing=true; e.preventDefault(); }
-      if(e.code==="KeyP"){ togglePause(); }
-      if(e.code==="KeyM"){ toggleMute(); }
-    }else{
-      if(isRestartKey(e)){ e.preventDefault(); startGame(); }
-    }
-  }
-  function up(e){ if(isFlyKey(e)){ pressing=false; e.preventDefault(); } }
-  window.addEventListener('keydown',down,true);
-  window.addEventListener('keyup',up,true);
-  window.addEventListener('keypress',e=>{ if(isFlyKey(e)||isRestartKey(e)) e.preventDefault(); },true);
-
-  // Touch / wheel behavior
-  ['touchstart','touchmove','touchend','touchcancel'].forEach(type => {
-    root.addEventListener(type, (e) => {
-      const target = e.target;
-      if (target.closest('.btn, button, .action, #start, #gameover, #win, #select')) {
-        return; // let UI work
+      // Sparkle hearts
+      for (let i = 0; i < 5; i++) {
+        const heart = document.createElement("div");
+        heart.className = "sparkle";
+        heart.style.left = (window.innerWidth/2 + (Math.random()*100-50))+"px";
+        heart.style.top = (window.innerHeight/2)+"px";
+        document.body.appendChild(heart);
+        setTimeout(()=>heart.remove(), 2000);
       }
-      e.preventDefault();
-      if (state.mode === 'playing') {
-        if (type === 'touchstart') pressing = true;
-        if (type === 'touchend' || type === 'touchcancel') pressing = false;
+
+      rocketTheme.currentTime = 0;
+      rocketTheme.play();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function gameLoop() {
+      if (!gameRunning) return;
+
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      // Example rocket
+      ctx.fillStyle = "white";
+      ctx.fillRect(220, lives*50+100, 40, 40);
+
+      // Check lose
+      if (lives <= 0) {
+        endGame(false);
+        return;
+      }
+
+      // Example win condition
+      if (Math.random() < 0.001) { // demo
+        endGame(true);
+        return;
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    function endGame(victory) {
+      gameRunning = false;
+      rocketTheme.pause();
+      rocketTheme.currentTime = 0;
+
+      if (victory) {
+        victoryScreen.style.display = "flex";
+        victoryHorn.currentTime = 0;
+        victoryHorn.play();
       } else {
-        if (type === 'touchstart') startGame();
+        gameOverScreen.style.display = "flex";
+        gameOverSound.currentTime = 0;
+        gameOverSound.play();
       }
-    }, { passive: false });
-  });
-  root.addEventListener('wheel', (e) => { e.preventDefault(); }, { passive: false });
-
-  // Click to start — but NOT if select is visible
-  canvas.addEventListener('click', ()=>{
-    const selectVisible = !elSelect.classList.contains('hidden');
-    if(state.mode!=='playing' && !selectVisible) startGame();
-  });
-
-  window.addEventListener('blur',()=>pressing=false);
-  document.addEventListener('visibilitychange',()=>{ if(document.hidden) pressing=false; });
-
-  /* ===== Parallax Stars ===== */
-  const stars={far:makeStars(40,.15), mid:makeStars(28,.35), near:makeStars(20,.65)}; let scroll=0;
-  function makeStars(n,tw){const a=[]; for(let i=0;i<n;i++) a.push({x:Math.random()*cfg.width,y:Math.random()*cfg.height,s:Math.random()*2+1,a:0.6+Math.random()*0.4,tw:tw*(0.5+Math.random())}); return a;}
-  function drawStars(layer,mul,color){ctx.save(); ctx.fillStyle=color; for(const st of layer){const x=(st.x-(scroll*mul)%(cfg.width+50)); const xx=x<-10?x+cfg.width+50:x; const tw=0.85+Math.sin(state.t*2+st.x*0.01)*0.15*st.tw; ctx.globalAlpha=st.a*tw; ctx.fillRect(xx,st.y,st.s,st.s);} ctx.restore(); ctx.globalAlpha=1;}
-
-  /* ===== Sprites (preload per pilot) ===== */
-  const pilotImgs = {};
-  const goalImgs  = {};
-  const hugImgs   = {};
-  for (const key in PILOTS){
-    pilotImgs[key] = new Image(); pilotImgs[key].src = PILOTS[key].pilotImg;
-    goalImgs[key]  = new Image(); goalImgs[key].src  = PILOTS[key].goalImg;
-    hugImgs[key]   = new Image(); hugImgs[key].src   = PILOTS[key].hugImg;
-  }
-
-  /* ===== Entities ===== */
-  class Plane{
-    constructor(){ this.x=160; this.y=cfg.height*0.6; this.vy=0; this.w=74; this.h=30; this.blink=0; }
-    update(dt){
-      const a=cfg.gravity - (pressing?cfg.thrust:0);
-      this.vy+=a*dt; this.vy=Math.max(-cfg.maxVy,Math.min(cfg.maxVy,this.vy));
-      this.y+=this.vy*dt;
-      if(this.y<30){this.y=30; this.vy=0;}
-      if(this.y>cfg.height-30){this.y=cfg.height-30; this.vy=0;}
-      if(this.blink>0)this.blink-=dt;
-    }
-    rect(){ return {x:this.x-this.w/2,y:this.y-this.h/2,w:this.w,h:this.h}; }
-    draw(ctx){
-      ctx.save(); ctx.translate(this.x,this.y);
-      ctx.globalAlpha=(this.blink>0 && Math.floor(this.blink*20)%2===0)?0.35:1;
-
-      // ship
-      ctx.fillStyle='#e5e2ff'; ctx.fillRect(-this.w/2,-this.h/2,this.w,this.h);
-      ctx.fillStyle='#b084ff'; ctx.fillRect(-14,-this.h/2-10,52,12);
-      ctx.fillStyle='#ff7da0'; ctx.fillRect(this.w/2-8,-this.h/2,8,this.h);
-      ctx.globalAlpha=.5; ctx.fillStyle='#ff7da0'; ctx.fillRect(-this.w/2-6,-2,4,4); ctx.globalAlpha=1;
-
-      // pilot on top
-      const w=36,h=36,x=-w/2,y=-this.h/2-h+6;
-      const pilotKey = state.pilot || 'aaron';
-      const img = pilotImgs[pilotKey];
-      if (img && img.complete && img.naturalWidth){
-        const sm=ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled=false;
-        ctx.drawImage(img, x, y, w, h);
-        ctx.imageSmoothingEnabled=sm;
-      } else {
-        ctx.fillStyle='#ffd7c8'; ctx.fillRect(x+10,y+12,16,12);
-        ctx.fillStyle='#0e0b2b'; ctx.fillRect(x+12,y+16,2,2); ctx.fillRect(x+20,y+16,2,2);
-        ctx.fillStyle='#3a2b6d'; ctx.fillRect(x+8,y+24,20,10);
-        ctx.fillStyle='#2a2451'; ctx.fillRect(x+6,y+12,20,2);
-      }
-
-      ctx.restore();
-    }
-    takeHit(){ if(state.lives>0){ state.lives--; updateHUD(); this.blink=.6; sfx(180,.16,'sawtooth',.35); if(state.lives<=0) gameOver(); } }
-  }
-
-  class Obstacle{
-    constructor(kind,x,y,speed){
-      this.kind=kind; this.x=x; this.y=y; this.speed=speed; this.alive=true; this.t=0;
-      this.w= kind==='bird'?42 : kind==='cloud'?78 : kind==='gust'?36 : kind==='meteor'?32 : 40;
-      this.h= kind==='bird'?26 : kind==='cloud'?44 : kind==='gust'?36 : kind==='meteor'?28 : 26;
-    }
-    rect(){ return {x:this.x-this.w/2,y:this.y-this.h/2,w:this.w,h:this.h}; }
-    update(dt){
-      this.t+=dt; this.x-=this.speed*dt; if(this.x<-120) this.alive=false;
-      if(this.kind==='meteor') this.y+=Math.sin(this.t*8)*0.6;
-      if(this.kind==='satellite') this.y+=Math.sin(this.t*5)*0.4;
-    }
-    draw(ctx){
-      ctx.save(); ctx.translate(this.x,this.y);
-      if(this.kind==='bird'){
-        ctx.fillStyle='#ffdede'; rrect(ctx,-18,-9,36,18,8); ctx.fill();
-        ctx.fillStyle='#ff7da0'; rrect(ctx,-10,-3,18,6,3); ctx.fill();
-        ctx.fillStyle='#2a2451'; ctx.fillRect(8,-2,3,3);
-        ctx.fillStyle='#ffc23e'; ctx.beginPath(); ctx.moveTo(18,-2); ctx.lineTo(28,0); ctx.lineTo(18,2); ctx.fill();
-      } else if(this.kind==='cloud'){
-        ctx.fillStyle='rgba(255,255,255,.85)'; cloud(ctx,0,0,this.w,this.h); ctx.fill();
-      } else if(this.kind==='gust'){
-        ctx.strokeStyle='#b3a6ff'; ctx.lineWidth=2.5; ctx.beginPath();
-        for(let i=-18;i<=18;i++){ const yy=Math.sin((i/6)+this.t*6)*6; if(i===-18) ctx.moveTo(i,yy); else ctx.lineTo(i,yy); }
-        ctx.stroke();
-      } else if(this.kind==='meteor'){
-        ctx.fillStyle='#ffa07a'; rrect(ctx,-14,-10,28,20,6); ctx.fill();
-        ctx.globalAlpha=.6; ctx.fillStyle='#ff6b6b'; ctx.beginPath(); ctx.ellipse(-20,0,14,6,0,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
-        ctx.fillStyle='#5a2a2a'; ctx.fillRect(-6,-4,4,4); ctx.fillRect(2,2,3,3);
-      } else if(this.kind==='satellite'){
-        ctx.fillStyle='#d0d7ff'; rrect(ctx,-8,-6,16,12,2); ctx.fill();
-        ctx.fillStyle='#7aa0ff'; ctx.fillRect(-26,-4,16,8); ctx.fillRect(10,-4,16,8);
-        ctx.fillStyle='#2a2451'; ctx.fillRect(-1,-10,2,20);
-      }
-      ctx.restore();
-    }
-  }
-
-  // Girlfriend goal object (changes sprite by pilot)
-  class Goal{
-    constructor(){
-      this.x=cfg.width+140; this.y=cfg.height*0.55; this.w=40; this.h=48; this.speed=320; this.active=true;
-    }
-    rect(){ return {x:this.x-this.w/2,y:this.y-this.h/2,w:this.w,h:this.h}; }
-    update(dt){ this.x -= this.speed*dt; if(this.x<-120) this.active=false; }
-    draw(ctx){
-      const key = state.pilot || 'aaron';
-      const img = goalImgs[key];
-      if(!(img && img.complete && img.naturalWidth)) return;
-      const sm=ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled=false;
-      ctx.drawImage(img, this.x-this.w/2, this.y-this.h, this.w, this.h);
-      ctx.imageSmoothingEnabled=sm;
-    }
-  }
-
-  function rrect(ctx,x,y,w,h,r){const rr=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+rr,y);ctx.arcTo(x+w,y,x+w,y+h,rr);ctx.arcTo(x+w,y+h,x,y+h,rr);ctx.arcTo(x,y+h,x,y,rr);ctx.arcTo(x,y,x+w,y,rr);ctx.closePath();}
-  function cloud(ctx,x,y,w,h){ctx.beginPath();ctx.ellipse(x-w*.15,y,w*.35,h*.46,0,0,Math.PI*2);ctx.ellipse(x+w*.05,y-h*.06,w*.42,h*.52,0,0,Math.PI*2);ctx.ellipse(x+w*.3,y,w*.48,h*.5,0,0,Math.PI*2);}
-  function overlap(a,b){return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y;}
-
-  const plane=new Plane();
-  const obstacles=[];
-  let goal=null;
-
-  function spawnObstacle(){
-    const r=Math.random();
-    const kind = r<.35?'bird' : r<.6?'cloud' : r<.75?'gust' : r<.9?'meteor' : 'satellite';
-    const y=60+Math.random()*(cfg.height-120);
-    const speed=cfg.obsSpeedMin+Math.random()*(cfg.obsSpeedMax-cfg.obsSpeedMin);
-    obstacles.push(new Obstacle(kind,cfg.width+120,y,speed));
-  }
-
-  /* ===== ✨ Tiny Sparkle Hearts ===== */
-  function sparkleHearts(){
-    const burst = document.createElement('div');
-    burst.className = 'heartBurst';
-    burst.style.left = `calc(50% + ${(Math.random()*40-20).toFixed(0)}px)`;
-    root.appendChild(burst);
-
-    const N = 6 + (Math.random()*3|0);
-    for(let i=0;i<N;i++){
-      const span = document.createElement('span');
-      span.className = 'heart';
-      span.textContent = Math.random() < 0.3 ? '💜' : '❤️';
-      span.style.left = `${(Math.random()*60-30).toFixed(0)}px`;
-      span.style.animationDuration = `${(0.9 + Math.random()*0.5).toFixed(2)}s`;
-      span.style.animationDelay = `${(i*0.06).toFixed(2)}s`;
-      span.style.fontSize = `${14 + Math.random()*8}px`;
-      burst.appendChild(span);
-    }
-    setTimeout(()=> burst.remove(), 1800);
-  }
-
-  /* ===== Loop ===== */
-  let last=performance.now();
-  function loop(now){
-    const dt=Math.min(0.033,(now-last)/1000); last=now;
-    if(state.mode!=='playing'){ requestAnimationFrame(loop); return; }
-    if(state.paused){ requestAnimationFrame(loop); return; }
-
-    state.t+=dt; state.lastSpawn+=dt; scroll+=(cfg.baseSpeed*dt);
-
-    // progress & spawns
-    state.dist=Math.min(cfg.targetKm, state.dist + (cfg.baseSpeed/3.5)*dt);
-    const interval=Math.max(0.6, cfg.spawnBase - (state.dist/cfg.targetKm)*0.4);
-    if(state.lastSpawn>interval){ spawnObstacle(); state.lastSpawn=0; }
-
-    // reveal goal near finish
-    if(!goal && (cfg.targetKm - state.dist) <= cfg.goalRevealKm){ goal=new Goal(); }
-
-    // updates
-    plane.update(dt);
-    for(const ob of obstacles) ob.update(dt);
-    if(goal) goal.update(dt);
-
-    // collisions with obstacles → lose life
-    const pr=plane.rect();
-    for(const ob of obstacles){
-      if(!ob.alive) continue;
-      if(overlap(pr, ob.rect())){ ob.alive=false; plane.takeHit(); break; }
-    }
-    // collision with girlfriend → win
-    if(goal && goal.active && overlap(pr, goal.rect())){ return win(); }
-
-    // cull
-    for(let i=obstacles.length-1;i>=0;i--) if(!obstacles[i].alive) obstacles.splice(i,1);
-    if(goal && !goal.active) goal=null;
-
-    /* ==== DRAW ==== */
-    ctx.clearRect(0,0,cfg.width,cfg.height);
-    drawStars(stars.far,0.2,'#d9d4ff'); drawStars(stars.mid,0.45,'#fff0ff'); drawStars(stars.near,0.8,'#ffffff');
-    const g=ctx.createLinearGradient(0,0,0,cfg.height); g.addColorStop(0,'rgba(255,255,255,0.02)'); g.addColorStop(1,'rgba(255,120,160,0.04)'); ctx.fillStyle=g; ctx.fillRect(0,0,cfg.width,cfg.height);
-    plane.draw(ctx);
-    if(goal) goal.draw(ctx);
-    for(const ob of obstacles) ob.draw(ctx);
-    updateHUD();
-
-    if(state.dist>=cfg.targetKm) return win();
-    requestAnimationFrame(loop);
-  }
-
-  /* ===== States & flow ===== */
-  function showSelect(){
-    elSelect.classList.remove('hidden');
-    elStart.classList.add('hidden');
-    elGameOver.classList.add('hidden');
-    elWin.classList.add('hidden');
-    state.mode='start';
-    pressing=false;
-
-    // reset any previous hug image to avoid “sticking”
-    hugImg.src = '';
-    hugImg.style.display = 'block';
-    hugFallback.style.display = 'none';
-  }
-  function showStart(){
-    elSelect.classList.add('hidden');
-    elStart.classList.remove('hidden');
-    elGameOver.classList.add('hidden');
-    elWin.classList.add('hidden');
-    state.mode='start';
-    pressing=false;
-  }
-
-  function setPilot(key){
-    state.pilot = key;
-    localStorage.setItem('pilot', key); // remember choice (we still show select on next load)
-    showStart();                         // go to Start, not auto-starting the game
-  }
-  pickAaron.onclick = ()=>setPilot('aaron');
-  pickLabib.onclick = ()=>setPilot('labib');
-  pickAsef.onclick  = ()=>setPilot('asef');
-  pickTajwar.onclick= ()=>setPilot('tajwar');
-
-  function startGame(){
-    if (!state.pilot) { showSelect(); return; }
-    state.mode='playing'; state.paused=false; state.t=0; state.dist=0; state.lastSpawn=0; state.lives=cfg.livesStart;
-    obstacles.length=0; goal=null; pressing=false; updateHUD();
-    elStart.classList.add('hidden'); elGameOver.classList.add('hidden'); elWin.classList.add('hidden'); elSelect.classList.add('hidden');
-    window.focus(); canvas.focus(); initAudio();
-
-    // Duck synth pad under soundtrack & start looping soundtrack
-    if (musicGain) musicGain.gain.value = 0.0;
-    if (musicRocket){
-      try { musicRocket.currentTime = 0; musicRocket.muted = state.muted; musicRocket.play(); } catch {}
     }
 
-    // ✨ hearts on liftoff (visual only)
-    sparkleHearts();
-    requestAnimationFrame(n=>{ last=n; requestAnimationFrame(loop); });
-  }
-  function stopMusic(){
-    if (musicRocket){
-      try { musicRocket.pause(); musicRocket.currentTime = 0; } catch {}
+    function restartGame() {
+      startGame(currentPilot);
     }
-  }
-  function gameOver(){
-    state.mode='gameover';
-    elGameOver.classList.remove('hidden');
-    stopMusic();
-    // play game over sfx
-    if (sfxGameOver && !state.muted){
-      try { sfxGameOver.currentTime = 0; sfxGameOver.play(); } catch {}
-    }
-  }
-  function win(){
-    state.mode='win';
-    elWin.classList.remove('hidden');
-    stopMusic();
-    // cute synth blips
-    sfx(1200,.12,'triangle',.35); sfx(1500,.18,'square',.25);
-    // horns sfx
-    if (sfxHorn && !state.muted){
-      try {
-        sfxHorn.currentTime = 0; sfxHorn.play();
-        // optional second short honk for flavor
-        setTimeout(()=>{ try{sfxHorn.currentTime=0; sfxHorn.play();}catch{} }, 400);
-      } catch {}
-    }
-    const key = state.pilot || 'aaron';
-    winTitle.textContent = PILOTS[key].winLine || 'Hug time! 💖';
-    winText.textContent  = 'A warm embrace. 🫶';
-    hugFallback.style.display='none';
-    hugImg.style.display='block';
-    hugImg.src = PILOTS[key].hugImg || '';
-  }
-  function togglePause(){
-    if(state.mode!=='playing') return;
-    state.paused=!state.paused;
-    pauseBtn.textContent=state.paused?'▶️':'⏸️';
-    // pause/resume soundtrack too
-    if (musicRocket){
-      try {
-        if (state.paused) musicRocket.pause();
-        else musicRocket.play();
-      } catch {}
-    }
-  }
 
-  // Buttons
-  playBtn.onclick=startGame; retryBtn.onclick=startGame; againBtn.onclick=startGame;
-  pauseBtn.onclick=togglePause; muteBtn.onclick=toggleMute;
-  changePilot1.onclick=showSelect; changePilot2.onclick=showSelect;
-
-  // --- startup: ALWAYS show character select first (no auto-start) ---
-  showSelect();
-  updateHUD();
-
-})();
-</script>
+    function backToMenu() {
+      gameOverScreen.style.display = "none";
+      victoryScreen.style.display = "none";
+      menu.style.display = "flex";
+    }
+  </script>
 </body>
 </html>
