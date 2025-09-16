@@ -1,234 +1,177 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Mini Aaron: Flight to Chandrima</title>
-<style>
-  :root{ --bg-1:#0b0820; --bg-2:#160f32; --bg-3:#201443; --accent:#ff5a7a; --accent-2:#b084ff; }
-  html,body{height:100%;margin:0;background:
-    radial-gradient(1600px 100% at 50% 0%,rgba(255,255,255,.05),transparent),
-    linear-gradient(180deg,var(--bg-1),var(--bg-2) 60%,var(--bg-3));
-    color:#fff;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;}
-
-  #gameRoot{position:relative;max-width:960px;margin:0 auto;height:100vh;overflow:hidden;
-    box-shadow:0 8px 40px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.07);border-radius:16px}
-  canvas{display:block;width:100%;height:100%;outline:none}
-
-  .hud{position:absolute;top:12px;left:12px;display:flex;gap:10px;z-index:5}
-  .pill{background:rgba(0,0,0,.35);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.15);padding:8px 12px;border-radius:999px}
-  .hud-right{position:absolute;top:12px;right:12px;display:flex;gap:10px;z-index:6}
-  .btn{cursor:pointer;user-select:none}
-  .bar{--p:0;position:relative;height:10px;width:240px;border-radius:999px;background:rgba(255,255,255,.15);overflow:hidden}
-  .bar::after{content:"";position:absolute;inset:0;width:calc(var(--p)*1%);background:linear-gradient(90deg,var(--accent),var(--accent-2))}
-  .rec{position:absolute;top:14px;right:14px;color:#ff4d4d;font-weight:800;text-shadow:0 0 10px #ff4d4d80}
-  .rec::before{content:"● ";}
-
-  .overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,0,20,.78);z-index:10;transition:opacity .25s}
-  .overlay.hidden{opacity:0;pointer-events:none}
-  .card{background:rgba(255,255,255,.07);padding:28px;border-radius:16px;text-align:center;border:1px solid rgba(255,255,255,.15);max-width:720px}
-  .action{border:none;padding:12px 18px;border-radius:12px;font-weight:800;cursor:pointer;background:linear-gradient(180deg,var(--accent),#ff87a0);color:#fff}
-
-  .holdZone{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:7;background:rgba(255,255,255,.08);
-            border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(6px);padding:10px 16px;border-radius:999px;user-select:none}
-  .hint{opacity:.85;font-size:12px;margin-top:6px}
-
-  /* Mobile fixes */
-  html, body, #gameRoot, canvas {
-    touch-action: none; overscroll-behavior: none;
-    user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
-  }
-  * { -webkit-tap-highlight-color: transparent; }
-</style>
+  <meta charset="UTF-8">
+  <title>Doggo’s Journey to Chandrima</title>
+  <style>
+    body {
+      background: black;
+      color: white;
+      text-align: center;
+      font-family: monospace;
+    }
+    canvas {
+      display: block;
+      margin: 20px auto;
+      background: #111;
+      border: 2px solid white;
+    }
+  </style>
 </head>
 <body>
-<div id="gameRoot">
-  <canvas id="game" tabindex="0" aria-label="Mini Aaron Flight Game"></canvas>
+  <h1>🚀 Doggo’s Journey to Chandrima 💖</h1>
+  <p>Press <b>SPACE</b> to fly up. Reach Chandrima without crashing!</p>
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
 
-  <div class="hud">
-    <div class="pill" id="livesPill">❤️❤️❤️</div>
-    <div class="pill">✈️ Dist: <span id="km">10,000</span></div>
-    <div class="pill bar" id="progress"></div>
-  </div>
-  <div class="hud-right">
-    <div class="pill btn" id="pauseBtn" title="Pause/Resume">⏸️</div>
-    <div class="pill btn" id="muteBtn" title="Mute/Unmute">🔊</div>
-  </div>
-  <div class="rec">REC</div>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
 
-  <div class="holdZone" id="holdZone">Hold to fly ↑ • Space / ↑ / W also work</div>
+    // Load images
+    const doggoImg = new Image();
+    doggoImg.src = "doggo.png";
+    const chandrimaImg = new Image();
+    chandrimaImg.src = "chandrima.png";
+    const hugImg = new Image();
+    hugImg.src = "hug.png";
 
-  <!-- Start -->
-  <div class="overlay" id="start">
-    <div class="card">
-      <h1 style="margin:0 0 8px">The Flight to Chandrima ✈️💜</h1>
-      <p>Hold <b>Space / ↑ / W</b> or <b>hold screen</b> to go up. Dodge meteors, birds, satellites, clouds, and gusts!</p>
-      <p class="hint">3 lives. Hit = lose a heart. At 0 → <b>Game Over</b>. Reach Chandrima → <b>HUG WIN</b>.</p>
-      <button class="action" id="playBtn">🎬 Fly!</button>
-    </div>
-  </div>
+    const meteorImg = new Image();
+    meteorImg.src = "meteor.png";
+    const birdImg = new Image();
+    birdImg.src = "bird.png";
+    const satelliteImg = new Image();
+    satelliteImg.src = "satellite.png";
+    const cloudImg = new Image();
+    cloudImg.src = "cloud.png";
+    const gustImg = new Image();
+    gustImg.src = "gust.png";
 
-  <!-- Game Over -->
-  <div class="overlay hidden" id="gameover">
-    <div class="card">
-      <h2>Game Over 💔</h2>
-      <p>Press <b>Space</b> or <b>Enter</b> — or tap/click — to try again.</p>
-      <button class="action" id="retryBtn">↻ Restart</button>
-    </div>
-  </div>
+    // Player
+    const player = {
+      x: 100,
+      y: 300,
+      width: 40,
+      height: 40,
+      velocityY: 0
+    };
 
-  <!-- Win -->
-  <div class="overlay hidden" id="win">
-    <div class="card">
-      <h2>Landed in Bangladesh — Hug time 💖</h2>
-      <img id="hugImg" src="hug.png" alt="Aaron and Chandrima hugging"
-        style="image-rendering:pixelated;max-width:320px;width:100%;border-radius:8px;border:1px solid rgba(255,255,255,.2);" />
-      <p>Mini Aaron & Chandrima hug and embrace. 🫶</p>
-      <button class="action" id="againBtn">↻ Play again</button>
-    </div>
-  </div>
-</div>
+    let gravity = 0.4;
+    let thrust = -8;
+    let isSpacePressed = false;
 
-<script>
-(() => {
-  /* === Config === */
-  const cfg = {
-    width:960, height:540,
-    gravity:1400, thrust:2400, maxVy:800,
-    baseSpeed:300, targetKm:10000,
-    livesStart:3,
-    spawnBase:1.0, obsSpeedMin:280, obsSpeedMax:420
-  };
+    // Obstacles
+    const obstacles = [];
+    const obstacleTypes = ["meteor", "bird", "satellite", "cloud", "gust"];
 
-  /* === State === */
-  const state = {
-    dpr:Math.min(2,window.devicePixelRatio||1),
-    mode:'start',      // 'start' | 'playing' | 'gameover' | 'win'
-    t:0, dist:0, lastSpawn:0,
-    lives:cfg.livesStart, muted:false, paused:false
-  };
+    function spawnObstacle() {
+      const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+      const size = Math.floor(Math.random() * 40) + 30;
+      const y = Math.floor(Math.random() * (canvas.height - size));
+      const speed = Math.random() * 3 + 2;
+      obstacles.push({ x: canvas.width, y, width: size, height: size, type, speed });
+    }
 
-  /* === Canvas === */
-  const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
-  function resize(){
-    canvas.width = canvas.clientWidth * state.dpr;
-    canvas.height = canvas.clientHeight * state.dpr;
-    ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
-  }
-  new ResizeObserver(resize).observe(document.getElementById('gameRoot')); resize();
+    setInterval(spawnObstacle, 2000);
 
-  /* === UI === */
-  const elLives = document.getElementById('livesPill');
-  const elKm = document.getElementById('km');
-  const elProg = document.getElementById('progress');
-  const elStart = document.getElementById('start');
-  const elGameOver = document.getElementById('gameover');
-  const elWin = document.getElementById('win');
-  const playBtn = document.getElementById('playBtn');
-  const retryBtn = document.getElementById('retryBtn');
-  const againBtn = document.getElementById('againBtn');
-  const pauseBtn = document.getElementById('pauseBtn');
-  const muteBtn = document.getElementById('muteBtn');
+    // Goal (Chandrima)
+    const goal = {
+      x: canvas.width - 100,
+      y: canvas.height / 2 - 40,
+      width: 60,
+      height: 80
+    };
 
-  function updateHUD(){
-    elLives.textContent = '❤️'.repeat(state.lives) + '🤍'.repeat(Math.max(0, cfg.livesStart - state.lives));
-    elKm.textContent = Math.max(0, cfg.targetKm - Math.floor(state.dist)).toLocaleString();
-    elProg.style.setProperty('--p', (state.dist/cfg.targetKm*100).toFixed(2));
-  }
+    let gameOver = false;
+    let gameWon = false;
 
-  /* === Sprites === */
-  const doggoImg=new Image(); doggoImg.src="doggo.png"; let doggoReady=false; doggoImg.onload=()=>doggoReady=true;
-  const chandrimaImg=new Image(); chandrimaImg.src="chandrima.png"; let chandrimaReady=false; chandrimaImg.onload=()=>chandrimaReady=true;
+    function update() {
+      if (gameOver || gameWon) return;
 
-  /* === Entities === */
-  const player={x:150,y:cfg.height/2,v:0,w:48,h:48};
-  const obstacles=[];
-  const goal={x:cfg.width+999,y:cfg.height/2,w:60,h:60,hit:false};
+      // Player physics
+      if (isSpacePressed) player.velocityY = thrust;
+      player.velocityY += gravity;
+      player.y += player.velocityY;
 
-  function spawnObs(){
-    const y=Math.random()*(cfg.height-40)+20;
-    const spd=cfg.obsSpeedMin+Math.random()*(cfg.obsSpeedMax-cfg.obsSpeedMin);
-    obstacles.push({x:cfg.width+60,y,spd,w:40,h:40});
-  }
+      if (player.y + player.height > canvas.height) {
+        player.y = canvas.height - player.height;
+        player.velocityY = 0;
+      }
+      if (player.y < 0) {
+        player.y = 0;
+        player.velocityY = 0;
+      }
 
-  /* === Input === */
-  let pressing=false;
-  function isFlyKey(e){return["Space","ArrowUp","KeyW"].includes(e.code)||[" ","w","W"].includes(e.key);}
-  function isRestartKey(e){return e.code==="Space"||e.code==="Enter"||e.key===" "||e.key==="Enter";}
-  window.addEventListener('keydown',e=>{ if(state.mode==='playing'){if(isFlyKey(e)){pressing=true;e.preventDefault();}} else {if(isRestartKey(e)){startGame();}} });
-  window.addEventListener('keyup',e=>{ if(isFlyKey(e)) pressing=false; });
+      // Move obstacles
+      for (let o of obstacles) {
+        o.x -= o.speed;
+        if (checkCollision(player, o)) gameOver = true;
+      }
 
-  canvas.addEventListener('touchstart',()=>{ if(state.mode==='playing'){ pressing=true; } else { startGame(); }});
-  canvas.addEventListener('touchend',()=>pressing=false);
+      // Win condition
+      if (checkCollision(player, goal)) gameWon = true;
+    }
 
-  /* === Game Flow === */
-  function startGame(){
-    state.mode='playing';
-    state.lives=cfg.livesStart; state.dist=0; state.t=0;
-    obstacles.length=0; goal.x=cfg.width+999; goal.hit=false;
-    player.y=cfg.height/2; player.v=0;
-    elStart.classList.add('hidden'); elGameOver.classList.add('hidden'); elWin.classList.add('hidden');
-  }
-  function gameOver(){state.mode='gameover'; elGameOver.classList.remove('hidden');}
-  function win(){state.mode='win'; elWin.classList.remove('hidden');}
+    function checkCollision(a, b) {
+      return (
+        a.x < b.x + b.width &&
+        a.x + a.width > b.x &&
+        a.y < b.y + b.height &&
+        a.y + a.height > b.y
+      );
+    }
 
-  /* === Update === */
-  function update(dt){
-    state.t+=dt;
-    if(state.mode!=='playing') return;
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    state.dist += cfg.baseSpeed*dt/10;
-    if(state.dist>=cfg.targetKm && !goal.hit){goal.x=cfg.width; goal.y=cfg.height/2; goal.hit=true;}
+      // Draw player
+      ctx.drawImage(doggoImg, player.x, player.y, player.width, player.height);
 
-    // player physics
-    if(pressing) player.v-=cfg.thrust*dt; else player.v+=cfg.gravity*dt;
-    player.v=Math.max(-cfg.maxVy,Math.min(cfg.maxVy,player.v));
-    player.y+=player.v*dt; player.y=Math.max(0,Math.min(cfg.height-player.h,player.y));
+      // Draw obstacles
+      for (let o of obstacles) {
+        let img;
+        switch (o.type) {
+          case "meteor": img = meteorImg; break;
+          case "bird": img = birdImg; break;
+          case "satellite": img = satelliteImg; break;
+          case "cloud": img = cloudImg; break;
+          case "gust": img = gustImg; break;
+        }
+        ctx.drawImage(img, o.x, o.y, o.width, o.height);
+      }
 
-    // obstacles
-    if(state.t-state.lastSpawn>cfg.spawnBase){spawnObs(); state.lastSpawn=state.t;}
-    for(const o of obstacles){o.x-=o.spd*dt;}
-    while(obstacles.length && obstacles[0].x<-60) obstacles.shift();
+      // Draw goal
+      ctx.drawImage(chandrimaImg, goal.x, goal.y, goal.width, goal.height);
 
-    // collisions
-    for(const o of obstacles){
-      if(player.x<o.x+o.w && player.x+player.w>o.x && player.y<o.y+o.h && player.y+player.h>o.y){
-        state.lives--; obstacles.splice(obstacles.indexOf(o),1);
-        if(state.lives<=0){gameOver();}
+      // End states
+      if (gameOver) {
+        ctx.fillStyle = "red";
+        ctx.font = "40px monospace";
+        ctx.fillText("💥 Crash! Try Again 💥", 220, 300);
+      }
+      if (gameWon) {
+        ctx.drawImage(hugImg, 200, 150, 400, 300);
+        ctx.fillStyle = "#ffb6c1";
+        ctx.font = "32px monospace";
+        ctx.fillText("Doggo & Chandrima Hug Forever 💖", 150, 500);
       }
     }
 
-    // goal check
-    if(goal.hit && player.x<goal.x+goal.w && player.x+player.w>goal.x && player.y<goal.y+goal.h && player.y+player.h>goal.y){
-      win();
+    function gameLoop() {
+      update();
+      render();
+      requestAnimationFrame(gameLoop);
     }
 
-    updateHUD();
-  }
+    // Controls
+    document.addEventListener("keydown", e => {
+      if (e.code === "Space") isSpacePressed = true;
+    });
+    document.addEventListener("keyup", e => {
+      if (e.code === "Space") isSpacePressed = false;
+    });
 
-  /* === Render === */
-  function render(){
-    ctx.clearRect(0,0,cfg.width,cfg.height);
-    ctx.fillStyle="white"; ctx.fillRect(player.x,player.y,player.w,player.h);
-    for(const o of obstacles){ctx.fillStyle="#ff4444"; ctx.fillRect(o.x,o.y,o.w,o.h);}
-    if(goal.hit){ctx.fillStyle="#44ff44"; ctx.fillRect(goal.x,goal.y,goal.w,goal.h);}
-  }
-
-  /* === Loop === */
-  let last=performance.now();
-  function frame(now){
-    const dt=(now-last)/1000; last=now;
-    update(dt); render();
-    requestAnimationFrame(frame);
-  }
-  requestAnimationFrame(frame);
-
-  /* === Buttons === */
-  playBtn.onclick=startGame;
-  retryBtn.onclick=startGame;
-  againBtn.onclick=startGame;
-})();
-</script>
+    gameLoop();
+  </script>
 </body>
 </html>
+
