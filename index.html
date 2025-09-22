@@ -64,6 +64,7 @@
     const finalScoreEl = document.getElementById("finalScore");
     const restartBtn = document.getElementById("restartBtn");
 
+    // Doggo object
     let doggo = {
       x: 150,
       y: 300,
@@ -75,6 +76,7 @@
       sprite: null
     };
 
+    // Game variables
     let obstacles = [];
     let frame = 0;
     let score = 0;
@@ -84,17 +86,28 @@
     let gameStarted = false;
     let startTime = null;
 
+    // Particles for hearts
+    let hearts = [];
+
+    // Load images
     const doggoImg = new Image();
     doggoImg.src = "doggo.png";
     doggo.sprite = doggoImg;
 
-    // Particle system for heart trail
-    let hearts = [];
+    const chandrimaImg = new Image();
+    chandrimaImg.src = "chandrima.png";
+
+    const hugImg = new Image();
+    hugImg.src = "hug.png";
+
+    let showChandrima = false;
+    let showHug = false;
+    let hugTimer = 0;
 
     function createHeart(x, y) {
       hearts.push({
-        x: x + doggo.width/2,
-        y: y + doggo.height/2,
+        x: x + doggo.width / 2,
+        y: y + doggo.height / 2,
         size: Math.random() * 8 + 4,
         dy: Math.random() * -1.5 - 0.5,
         opacity: 1
@@ -132,6 +145,9 @@
       spawnRate = 90;
       startTime = Date.now();
       hearts = [];
+      showChandrima = false;
+      showHug = false;
+      hugTimer = 0;
       gameOverScreen.style.display = "none";
       loop();
     }
@@ -192,6 +208,20 @@
       doggo.dy += doggo.gravity;
       doggo.y += doggo.dy;
       createHeart(doggo.x, doggo.y);
+
+      // Check if Doggo reaches destination
+      if (doggo.x + doggo.width >= 700) { // arbitrary X for Chandrima
+        showChandrima = true;
+        showHug = true;
+      } else {
+        doggo.x += 2; // move Doggo forward automatically
+      }
+
+      // Hug timer
+      if (showHug) {
+        hugTimer++;
+        if (hugTimer > 120) showHug = false; // show hug for ~2 seconds at 60fps
+      }
     }
 
     function drawScore() {
@@ -222,6 +252,14 @@
       drawDoggo();
       drawObstacles();
       drawScore();
+
+      if (showChandrima) {
+        ctx.drawImage(chandrimaImg, 650, 350, 100, 150); // adjust size/position
+      }
+
+      if (showHug) {
+        ctx.drawImage(hugImg, doggo.x, doggo.y - 50, 80, 80);
+      }
 
       if (frame % 10 === 0) score++;
 
