@@ -2,175 +2,178 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Doggo’s Journey to Chandrima</title>
+  <title>Doggo Flies to Zarifa</title>
   <style>
     body {
-      background: black;
-      color: white;
-      text-align: center;
-      font-family: monospace;
+      margin: 0;
+      overflow: hidden;
+      background: #000;
     }
     canvas {
       display: block;
-      margin: 20px auto;
-      background: #111;
-      border: 2px solid white;
+      margin: auto;
+      background: linear-gradient(to bottom, #87ceeb, #fff);
+    }
+    #startScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: black;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      font-family: Arial, sans-serif;
+      font-size: 28px;
+      text-align: center;
+    }
+    #startScreen button {
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 20px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <h1>🚀 Doggo’s Journey to Chandrima 💖</h1>
-  <p>Press <b>SPACE</b> to fly up. Reach Chandrima without crashing!</p>
+  <div id="startScreen">
+    <p>Doggo is flying to Zarifa 💖</p>
+    <button id="startBtn">Start Journey</button>
+  </div>
   <canvas id="gameCanvas" width="800" height="600"></canvas>
 
   <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
+    const startScreen = document.getElementById("startScreen");
+    const startBtn = document.getElementById("startBtn");
 
-    // Load images
+    let doggo = {
+      x: 150,
+      y: 300,
+      width: 50,
+      height: 50,
+      dy: 0,
+      gravity: 0.5,
+      lift: -10,
+      sprite: null
+    };
+
+    let obstacles = [];
+    let frame = 0;
+    let score = 0;
+    let gameOver = false;
+    let speed = 2; // base speed
+    let spawnRate = 90; // base obstacle spawn interval
+    let gameStarted = false;
+    let startTime = null;
+
+    // Load Doggo sprite
     const doggoImg = new Image();
     doggoImg.src = "doggo.png";
-    const chandrimaImg = new Image();
-    chandrimaImg.src = "chandrima.png";
-    const hugImg = new Image();
-    hugImg.src = "hug.png";
+    doggo.sprite = doggoImg;
 
-    const meteorImg = new Image();
-    meteorImg.src = "meteor.png";
-    const birdImg = new Image();
-    birdImg.src = "bird.png";
-    const satelliteImg = new Image();
-    satelliteImg.src = "satellite.png";
-    const cloudImg = new Image();
-    cloudImg.src = "cloud.png";
-    const gustImg = new Image();
-    gustImg.src = "gust.png";
+    // Start button
+    startBtn.addEventListener("click", () => {
+      startScreen.style.display = "none";
+      gameStarted = true;
+      startTime = Date.now();
+      loop();
+    });
 
-    // Player
-    const player = {
-      x: 100,
-      y: 300,
-      width: 40,
-      height: 40,
-      velocityY: 0
-    };
-
-    let gravity = 0.4;
-    let thrust = -8;
-    let isSpacePressed = false;
-
-    // Obstacles
-    const obstacles = [];
-    const obstacleTypes = ["meteor", "bird", "satellite", "cloud", "gust"];
-
-    function spawnObstacle() {
-      const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
-      const size = Math.floor(Math.random() * 40) + 30;
-      const y = Math.floor(Math.random() * (canvas.height - size));
-      const speed = Math.random() * 3 + 2;
-      obstacles.push({ x: canvas.width, y, width: size, height: size, type, speed });
+    function drawDoggo() {
+      ctx.drawImage(doggo.sprite, doggo.x, doggo.y, doggo.width, doggo.height);
     }
 
-    setInterval(spawnObstacle, 2000);
+    function drawObstacles() {
+      ctx.fillStyle = "green";
+      obstacles.forEach(o => {
+        ctx.fillRect(o.x, 0, o.width, o.top);
+        ctx.fillRect(o.x, canvas.height - o.bottom, o.width, o.bottom);
+      });
+    }
 
-    // Goal (Chandrima)
-    const goal = {
-      x: canvas.width - 100,
-      y: canvas.height / 2 - 40,
-      width: 60,
-      height: 80
-    };
-
-    let gameOver = false;
-    let gameWon = false;
-
-    function update() {
-      if (gameOver || gameWon) return;
-
-      // Player physics
-      if (isSpacePressed) player.velocityY = thrust;
-      player.velocityY += gravity;
-      player.y += player.velocityY;
-
-      if (player.y + player.height > canvas.height) {
-        player.y = canvas.height - player.height;
-        player.velocityY = 0;
+    function updateObstacles() {
+      if (frame % spawnRate === 0) {
+        let gap = 150;
+        let top = Math.random() * (canvas.height - gap - 100) + 50;
+        let bottom = canvas.height - top - gap;
+        obstacles.push({ x: canvas.width, width: 50, top, bottom });
       }
-      if (player.y < 0) {
-        player.y = 0;
-        player.velocityY = 0;
-      }
+      obstacles.forEach(o => o.x -= speed);
+      if (obstacles.length && obstacles[0].x < -50) obstacles.shift();
+    }
 
-      // Move obstacles
+    function detectCollision() {
       for (let o of obstacles) {
-        o.x -= o.speed;
-        if (checkCollision(player, o)) gameOver = true;
-      }
-
-      // Win condition
-      if (checkCollision(player, goal)) gameWon = true;
-    }
-
-    function checkCollision(a, b) {
-      return (
-        a.x < b.x + b.width &&
-        a.x + a.width > b.x &&
-        a.y < b.y + b.height &&
-        a.y + a.height > b.y
-      );
-    }
-
-    function render() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Draw player
-      ctx.drawImage(doggoImg, player.x, player.y, player.width, player.height);
-
-      // Draw obstacles
-      for (let o of obstacles) {
-        let img;
-        switch (o.type) {
-          case "meteor": img = meteorImg; break;
-          case "bird": img = birdImg; break;
-          case "satellite": img = satelliteImg; break;
-          case "cloud": img = cloudImg; break;
-          case "gust": img = gustImg; break;
+        if (
+          doggo.x < o.x + o.width &&
+          doggo.x + doggo.width > o.x &&
+          (doggo.y < o.top || doggo.y + doggo.height > canvas.height - o.bottom)
+        ) {
+          gameOver = true;
         }
-        ctx.drawImage(img, o.x, o.y, o.width, o.height);
       }
-
-      // Draw goal
-      ctx.drawImage(chandrimaImg, goal.x, goal.y, goal.width, goal.height);
-
-      // End states
-      if (gameOver) {
-        ctx.fillStyle = "red";
-        ctx.font = "40px monospace";
-        ctx.fillText("💥 Crash! Try Again 💥", 220, 300);
-      }
-      if (gameWon) {
-        ctx.drawImage(hugImg, 200, 150, 400, 300);
-        ctx.fillStyle = "#ffb6c1";
-        ctx.font = "32px monospace";
-        ctx.fillText("Doggo & Chandrima Hug Forever 💖", 150, 500);
-      }
+      if (doggo.y + doggo.height > canvas.height || doggo.y < 0) gameOver = true;
     }
 
-    function gameLoop() {
-      update();
-      render();
-      requestAnimationFrame(gameLoop);
+    function updateDoggo() {
+      doggo.dy += doggo.gravity;
+      doggo.y += doggo.dy;
+    }
+
+    function drawScore() {
+      ctx.fillStyle = "black";
+      ctx.font = "24px Arial";
+      ctx.fillText("Score: " + score, 20, 40);
+    }
+
+    function increaseDifficulty() {
+      let elapsed = (Date.now() - startTime) / 1000; // seconds
+      speed = 2 + elapsed * 0.05; // speed ramps up gradually
+      spawnRate = Math.max(50, 90 - Math.floor(elapsed / 5)); // spawns more often
+    }
+
+    function loop() {
+      if (!gameStarted) return;
+      if (gameOver) {
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "white";
+        ctx.font = "48px Arial";
+        ctx.fillText("Game Over 💔", canvas.width / 2 - 120, canvas.height / 2);
+        ctx.font = "24px Arial";
+        ctx.fillText("Final Score: " + score, canvas.width / 2 - 80, canvas.height / 2 + 40);
+        return;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      frame++;
+
+      increaseDifficulty();
+      updateDoggo();
+      updateObstacles();
+      detectCollision();
+
+      drawDoggo();
+      drawObstacles();
+      drawScore();
+
+      if (frame % 10 === 0) score++;
+
+      requestAnimationFrame(loop);
     }
 
     // Controls
-    document.addEventListener("keydown", e => {
-      if (e.code === "Space") isSpacePressed = true;
+    window.addEventListener("keydown", e => {
+      if (e.code === "Space") doggo.dy = doggo.lift;
     });
-    document.addEventListener("keyup", e => {
-      if (e.code === "Space") isSpacePressed = false;
+    window.addEventListener("click", () => {
+      doggo.dy = doggo.lift;
     });
-
-    gameLoop();
   </script>
 </body>
 </html>
