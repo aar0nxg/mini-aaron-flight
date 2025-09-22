@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Doggo Flies to Zarifa</title>
+  <title>Doggo Flies to Chandrima</title>
   <style>
     body {
       margin: 0;
@@ -14,7 +14,7 @@
       margin: auto;
       background: linear-gradient(to bottom, #87ceeb, #fff);
     }
-    #startScreen {
+    #startScreen, #gameOverScreen {
       position: absolute;
       top: 0;
       left: 0;
@@ -30,19 +30,29 @@
       font-size: 28px;
       text-align: center;
     }
-    #startScreen button {
+    #startScreen button, #gameOverScreen button {
       margin-top: 20px;
       padding: 12px 24px;
       font-size: 20px;
       cursor: pointer;
     }
+    #gameOverScreen {
+      display: none;
+    }
   </style>
 </head>
 <body>
   <div id="startScreen">
-    <p>Doggo is flying to Zarifa 💖</p>
+    <p>Doggo is flying to Chandrima 💖</p>
     <button id="startBtn">Start Journey</button>
   </div>
+
+  <div id="gameOverScreen">
+    <p>Game Over 💔</p>
+    <p id="finalScore">Final Score: 0</p>
+    <button id="restartBtn">Restart Journey</button>
+  </div>
+
   <canvas id="gameCanvas" width="800" height="600"></canvas>
 
   <script>
@@ -50,6 +60,9 @@
     const ctx = canvas.getContext("2d");
     const startScreen = document.getElementById("startScreen");
     const startBtn = document.getElementById("startBtn");
+    const gameOverScreen = document.getElementById("gameOverScreen");
+    const finalScoreEl = document.getElementById("finalScore");
+    const restartBtn = document.getElementById("restartBtn");
 
     let doggo = {
       x: 150,
@@ -66,22 +79,72 @@
     let frame = 0;
     let score = 0;
     let gameOver = false;
-    let speed = 2; // base speed
-    let spawnRate = 90; // base obstacle spawn interval
+    let speed = 2;
+    let spawnRate = 90;
     let gameStarted = false;
     let startTime = null;
 
-    // Load Doggo sprite
     const doggoImg = new Image();
     doggoImg.src = "doggo.png";
     doggo.sprite = doggoImg;
 
-    // Start button
+    // Particle system for heart trail
+    let hearts = [];
+
+    function createHeart(x, y) {
+      hearts.push({
+        x: x + doggo.width/2,
+        y: y + doggo.height/2,
+        size: Math.random() * 8 + 4,
+        dy: Math.random() * -1.5 - 0.5,
+        opacity: 1
+      });
+    }
+
+    function updateHearts() {
+      hearts.forEach(h => {
+        h.y += h.dy;
+        h.opacity -= 0.02;
+      });
+      hearts = hearts.filter(h => h.opacity > 0);
+    }
+
+    function drawHearts() {
+      hearts.forEach(h => {
+        ctx.fillStyle = `rgba(255, 0, 128, ${h.opacity})`;
+        ctx.beginPath();
+        ctx.moveTo(h.x, h.y);
+        ctx.bezierCurveTo(h.x, h.y - h.size/2, h.x - h.size/2, h.y - h.size, h.x, h.y - h.size);
+        ctx.bezierCurveTo(h.x + h.size/2, h.y - h.size, h.x, h.y - h.size/2, h.x, h.y);
+        ctx.fill();
+      });
+    }
+
+    function resetGame() {
+      doggo.x = 150;
+      doggo.y = 300;
+      doggo.dy = 0;
+      obstacles = [];
+      frame = 0;
+      score = 0;
+      gameOver = false;
+      speed = 2;
+      spawnRate = 90;
+      startTime = Date.now();
+      hearts = [];
+      gameOverScreen.style.display = "none";
+      loop();
+    }
+
     startBtn.addEventListener("click", () => {
       startScreen.style.display = "none";
       gameStarted = true;
       startTime = Date.now();
       loop();
+    });
+
+    restartBtn.addEventListener("click", () => {
+      resetGame();
     });
 
     function drawDoggo() {
@@ -118,11 +181,17 @@
         }
       }
       if (doggo.y + doggo.height > canvas.height || doggo.y < 0) gameOver = true;
+
+      if (gameOver) {
+        finalScoreEl.textContent = "Final Score: " + score;
+        gameOverScreen.style.display = "flex";
+      }
     }
 
     function updateDoggo() {
       doggo.dy += doggo.gravity;
       doggo.y += doggo.dy;
+      createHeart(doggo.x, doggo.y);
     }
 
     function drawScore() {
@@ -132,23 +201,13 @@
     }
 
     function increaseDifficulty() {
-      let elapsed = (Date.now() - startTime) / 1000; // seconds
-      speed = 2 + elapsed * 0.05; // speed ramps up gradually
-      spawnRate = Math.max(50, 90 - Math.floor(elapsed / 5)); // spawns more often
+      let elapsed = (Date.now() - startTime) / 1000;
+      speed = 2 + elapsed * 0.05;
+      spawnRate = Math.max(50, 90 - Math.floor(elapsed / 5));
     }
 
     function loop() {
-      if (!gameStarted) return;
-      if (gameOver) {
-        ctx.fillStyle = "rgba(0,0,0,0.5)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "white";
-        ctx.font = "48px Arial";
-        ctx.fillText("Game Over 💔", canvas.width / 2 - 120, canvas.height / 2);
-        ctx.font = "24px Arial";
-        ctx.fillText("Final Score: " + score, canvas.width / 2 - 80, canvas.height / 2 + 40);
-        return;
-      }
+      if (!gameStarted || gameOver) return;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       frame++;
@@ -157,7 +216,9 @@
       updateDoggo();
       updateObstacles();
       detectCollision();
+      updateHearts();
 
+      drawHearts();
       drawDoggo();
       drawObstacles();
       drawScore();
